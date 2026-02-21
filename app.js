@@ -1355,7 +1355,15 @@ function toLocalSong(file, title, artist, key) {
 }
 
 function getBaseName(filename = "") {
-  return String(filename).replace(/\.[^.]+$/, "").trim();
+  return normalizeForMeta(String(filename).replace(/\.[^.]+$/, ""));
+}
+
+function normalizeForMeta(text = "") {
+  return String(text || "")
+    .normalize("NFC")
+    .replace(/[\\/:*?"<>|]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function loadSongsFromSupabase() {
@@ -1429,9 +1437,9 @@ function toSongRecordPayload(title, artist, key, fileUrl, file) {
 async function handleAddFileSubmit(e) {
   e.preventDefault();
   const fileInput = $("#addFileInput");
-  const title = $("#addTitle").value.trim();
-  const artist = $("#addArtist").value.trim();
-  const key = $("#addKey").value.trim();
+  const title = normalizeForMeta($("#addTitle").value);
+  const artist = normalizeForMeta($("#addArtist").value);
+  const key = normalizeForMeta($("#addKey").value);
   const files = Array.from(fileInput?.files || []);
 
   if (!files.length) {
