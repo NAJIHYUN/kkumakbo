@@ -1020,7 +1020,7 @@ function resetAddUploadProgress() {
   const percent = $("#addUploadProgressPercent");
   const bar = $("#addUploadProgressBar");
   wrap?.classList.add("hidden");
-  if (text) text.textContent = "업로드 준비 중...";
+  if (text) text.textContent = "업로드 준비";
   if (percent) percent.textContent = "0%";
   if (bar) bar.style.width = "0%";
 }
