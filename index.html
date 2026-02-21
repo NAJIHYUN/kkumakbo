@@ -103,6 +103,31 @@
       <div class="modal-body">
         <button id="mPrevPage" class="preview-nav preview-nav-prev hidden" type="button" aria-label="이전 페이지">‹</button>
         <button id="mNextPage" class="preview-nav preview-nav-next hidden" type="button" aria-label="다음 페이지">›</button>
+        <div id="mEditPanel" class="preview-edit-panel hidden">
+          <div class="preview-edit-grid">
+            <label class="add-label">
+              <span>악보명</span>
+              <input id="mEditTitle" class="input" type="text" />
+            </label>
+            <label class="add-label">
+              <span>아티스트</span>
+              <input id="mEditArtist" class="input" type="text" />
+            </label>
+            <label class="add-label">
+              <span>Key</span>
+              <input id="mEditKey" class="input" type="text" />
+            </label>
+            <label class="add-label">
+              <span>페이지 추가 (PDF/JPG, 다중 가능)</span>
+              <input id="mEditAddPages" class="input" type="file" accept="application/pdf,image/*" multiple />
+            </label>
+          </div>
+          <div class="preview-edit-hint">페이지를 눌러 삭제 대상으로 선택할 수 있습니다.</div>
+          <div class="preview-edit-actions">
+            <button id="mEditCancel" class="btn" type="button">수정 취소</button>
+            <button id="mEditApply" class="btn primary" type="button">적용 저장</button>
+          </div>
+        </div>
         <img id="mImg" class="preview-img hidden" alt="미리보기" />
         <div id="mPdfMainWrap" class="pdf-main-wrap hidden">
           <canvas id="mPdfMain" class="pdf-main-canvas" aria-label="PDF 1페이지 미리보기"></canvas>
@@ -110,6 +135,7 @@
         <div id="mPageStrip" class="page-strip hidden" aria-label="페이지 목록"></div>
       </div>
       <div class="modal-foot">
+        <button id="mEditSong" class="btn" type="button">악보 수정</button>
         <button id="mDownloadPage" class="btn" type="button">페이지 일부 다운로드</button>
         <a id="mDownload" class="btn primary" download>전체 다운로드</a>
       </div>
