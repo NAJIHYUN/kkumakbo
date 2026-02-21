@@ -879,6 +879,31 @@ th.col-title{text-align:center}
   grid-template-columns:1fr;
   gap:10px;
 }
+.upload-progress{
+  margin-top:12px;
+  display:grid;
+  gap:8px;
+}
+.upload-progress-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:12px;
+  color:#555;
+}
+.upload-progress-track{
+  width:100%;
+  height:8px;
+  background:#eceff4;
+  border-radius:999px;
+  overflow:hidden;
+}
+.upload-progress-bar{
+  width:0%;
+  height:100%;
+  background:#2f80ed;
+  transition:width .18s ease;
+}
 .add-modal-card .modal-head .btn[data-close-add],
 #btnSubmitAddFile{
   min-width:48px;
