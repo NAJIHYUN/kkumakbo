@@ -301,7 +301,11 @@ async function initAuth() {
 
     const { data, error } = await client.auth.signInWithPassword({ email, password });
     if (error || !data?.session) {
-      setStatus(error?.message || "로그인에 실패했습니다.", true);
+      const loginErrorMessage =
+        error?.message === "Invalid login credentials"
+          ? "이메일 또는 비밀번호가 올바르지 않습니다."
+          : (error?.message || "로그인에 실패했습니다.");
+      setStatus(loginErrorMessage, true);
       return;
     }
 
