@@ -72,7 +72,7 @@ a{color:inherit}
 .index-page .controls,
 .index-page #selectedBar{
   flex:0 0 auto;
-grid-template-columns: 2.5fr 1fr 1fr 1fr 1fr 1fr 1fr;}
+  grid-template-columns: 2.5fr 1fr 1fr 1fr 1fr 1fr 1fr;}
 .index-page .table-wrap{
   flex:1 1 auto;
   min-height:0;
