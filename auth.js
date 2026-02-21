@@ -146,6 +146,8 @@ function setupPasswordPeek() {
 
   pw.addEventListener("blur", () => {
     render(false);
+    // 입력창을 벗어났다가 다시 들어올 때는 새로 입력하도록 초기화 예약
+    if (real.length > 0) pw.dataset.clearOnNextFocus = "1";
   });
   render(false);
 }
@@ -168,6 +170,16 @@ async function ensureApprovedOrSignOut(client, session) {
     return false;
   }
   return true;
+}
+
+async function isRegisteredEmail(client, email) {
+  try {
+    const { data, error } = await client.rpc("is_registered_email", { p_email: email });
+    if (error) return null;
+    return !!data;
+  } catch {
+    return null;
+  }
 }
 
 async function initAuth() {
@@ -314,12 +326,21 @@ async function initAuth() {
       return;
     }
 
+    const emailExists = await isRegisteredEmail(client, email);
+    if (emailExists === false) {
+      if (pwInput) pwInput.dataset.clearOnNextFocus = "1";
+      setStatus("가입되지 않은 이메일 주소입니다.", true);
+      return;
+    }
+
     const { data, error } = await client.auth.signInWithPassword({ email, password });
     if (error || !data?.session) {
-      const loginErrorMessage =
-        error?.message === "Invalid login credentials"
-          ? "이메일 또는 비밀번호가 올바르지 않습니다."
-          : (error?.message || "로그인에 실패했습니다.");
+      let loginErrorMessage = error?.message || "로그인에 실패했습니다.";
+      if (error?.message === "Invalid login credentials") {
+        loginErrorMessage = emailExists === true
+          ? "비밀번호가 올바르지 않습니다."
+          : "이메일 또는 비밀번호가 올바르지 않습니다.";
+      }
       if (pwInput) {
         pwInput.dataset.clearOnNextFocus = "1";
       }
