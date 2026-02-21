@@ -324,7 +324,7 @@ async function init() {
       shareState.selectedPages.clear();
     }
     document.body.classList.toggle("sheet-select-mode", shareState.selectMode);
-    btnPickSheets.textContent = shareState.selectMode ? "선택 취소" : "악보 선택";
+    btnPickSheets.textContent = shareState.selectMode ? "선택 취소" : "개별 페이지 선택";
     refreshSelectionUI();
   });
 }

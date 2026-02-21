@@ -11,6 +11,9 @@ const state = {
   selectedIds: [], // 순서대로 저장
 };
 
+const SB_SONGS_TABLE = "songs";
+const SB_FILES_BUCKET = "score-files";
+
 let previewSession = 0;
 let previewDoc = null;
 let previewPage = 1;
@@ -19,6 +22,8 @@ let previewMobileSlideMode = false;
 let previewSong = null;
 let previewPartialSelectMode = false;
 let previewSelectedPages = new Set();
+let previewEditMode = false;
+let previewEditDeletePages = new Set();
 let chipDragState = null;
 let mobileRowDragState = null;
 let mobileTwoFingerScrollY = null;
@@ -892,8 +897,16 @@ function openPreview(song) {
   previewSong = song;
   previewPartialSelectMode = false;
   previewSelectedPages = new Set();
+  previewEditMode = false;
+  previewEditDeletePages = new Set();
   $("#mTitle").textContent = song.title;
   $("#mMeta").textContent = `${song.artist} · ${song.key}키`;
+  $("#mEditPanel").classList.add("hidden");
+  $("#modal").classList.remove("preview-edit-mode");
+  $("#mEditTitle").value = song.title || "";
+  $("#mEditArtist").value = song.artist || "";
+  $("#mEditKey").value = song.key || "";
+  $("#mEditAddPages").value = "";
 
   const img = $("#mImg");
   const pdfWrap = $("#mPdfMainWrap");
@@ -975,6 +988,11 @@ function closeModal() {
   previewMobileSlideMode = false;
   previewPartialSelectMode = false;
   previewSelectedPages = new Set();
+  previewEditMode = false;
+  previewEditDeletePages = new Set();
+  $("#mEditPanel").classList.add("hidden");
+  $("#modal").classList.remove("preview-edit-mode");
+  $("#mEditAddPages").value = "";
   previewSong = null;
   syncPartialDownloadButton();
   updatePreviewNavButtons();
@@ -1040,11 +1058,197 @@ async function downloadOrSharePdfUrl(pdfUrl, filename) {
 
 function syncPartialDownloadButton() {
   const partialBtn = $("#mDownloadPage");
-  const canShow = !!previewSong?.pdfUrl && previewTotalPages > 1;
+  const canShow = !!previewSong?.pdfUrl && previewTotalPages > 1 && !previewEditMode;
   const ready = previewPartialSelectMode && previewSelectedPages.size > 0;
   partialBtn.classList.toggle("hidden", !canShow);
   partialBtn.disabled = !canShow;
   partialBtn.classList.toggle("ready", ready);
+}
+
+function syncPreviewEditSelectionUI() {
+  const strip = $("#mPageStrip");
+  if (!strip) return;
+  const thumbs = Array.from(strip.querySelectorAll(".page-thumb[data-page]"));
+  thumbs.forEach((btn) => {
+    const page = Number(btn.dataset.page);
+    const picked = previewEditDeletePages.has(page);
+    btn.classList.toggle("page-thumb-edit-picked", picked);
+    if (previewEditMode) btn.setAttribute("aria-pressed", picked ? "true" : "false");
+  });
+}
+
+function enterPreviewEditMode() {
+  if (!previewSong) return;
+  previewEditMode = true;
+  previewEditDeletePages = new Set();
+  previewPartialSelectMode = false;
+  previewSelectedPages = new Set();
+  $("#mEditPanel").classList.remove("hidden");
+  $("#modal").classList.add("preview-edit-mode");
+  $("#mEditTitle").value = previewSong.title || "";
+  $("#mEditArtist").value = previewSong.artist || "";
+  $("#mEditKey").value = previewSong.key || "";
+  $("#mEditAddPages").value = "";
+  syncPartialDownloadButton();
+  syncPreviewPartialSelectionUI();
+  syncPreviewEditSelectionUI();
+}
+
+function exitPreviewEditMode() {
+  previewEditMode = false;
+  previewEditDeletePages = new Set();
+  $("#mEditPanel").classList.add("hidden");
+  $("#modal").classList.remove("preview-edit-mode");
+  $("#mEditAddPages").value = "";
+  syncPartialDownloadButton();
+  syncPreviewEditSelectionUI();
+}
+
+function isRemoteSongId(id = "") {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id));
+}
+
+async function saveSongMetaToSupabase(song, patch = {}) {
+  if (!window.SB?.isConfigured()) return false;
+  if (!isRemoteSongId(song?.id)) return false;
+  try {
+    const client = window.SB.getClient();
+    const { data } = await client.auth.getSession();
+    const userId = data?.session?.user?.id;
+    if (!userId) return false;
+    const { error } = await client
+      .from(SB_SONGS_TABLE)
+      .update(patch)
+      .eq("id", song.id)
+      .eq("owner_id", userId);
+    if (error) {
+      console.error("songs update 실패:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("songs update 오류:", err);
+    return false;
+  }
+}
+
+async function uploadEditedPdfBlob(blob, song) {
+  if (!window.SB?.isConfigured() || !isRemoteSongId(song?.id)) return null;
+  try {
+    const client = window.SB.getClient();
+    const { data } = await client.auth.getSession();
+    const userId = data?.session?.user?.id;
+    if (!userId) return null;
+    const file = new File([blob], `${sanitizeFilename(song.title || "score")}.pdf`, { type: "application/pdf" });
+    return await uploadSongFileToSupabase(file, userId);
+  } catch (err) {
+    console.error("수정 PDF 업로드 실패:", err);
+    return null;
+  }
+}
+
+async function buildEditedPdfFromPreview(song, deletePagesSet, addFiles) {
+  if (!window.PDFLib) throw new Error("PDFLib not loaded");
+  const out = await PDFLib.PDFDocument.create();
+
+  if (song.pdfUrl) {
+    const res = await fetch(song.pdfUrl, { cache: "no-store" });
+    if (!res.ok) throw new Error("failed to fetch source pdf");
+    const bytes = await res.arrayBuffer();
+    const src = await PDFLib.PDFDocument.load(bytes);
+    const keepIndices = src.getPageIndices().filter((idx) => !deletePagesSet.has(idx + 1));
+    if (keepIndices.length) {
+      const copied = await out.copyPages(src, keepIndices);
+      copied.forEach((p) => out.addPage(p));
+    }
+  } else if (song.jpgUrl) {
+    if (!deletePagesSet.has(1)) {
+      const res = await fetch(song.jpgUrl, { cache: "no-store" });
+      if (res.ok) {
+        const bytes = await res.arrayBuffer();
+        const isPng = /\.png$/i.test(song.jpgUrl);
+        const img = isPng ? await out.embedPng(bytes) : await out.embedJpg(bytes);
+        const page = out.addPage([img.width, img.height]);
+        page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+      }
+    }
+  }
+
+  for (const file of addFiles) {
+    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+    const isImage = /^image\//.test(file.type) || /\.(jpg|jpeg|png|webp)$/i.test(file.name || "");
+    if (!isPdf && !isImage) continue;
+    const bytes = await file.arrayBuffer();
+    if (isPdf) {
+      const src = await PDFLib.PDFDocument.load(bytes);
+      const copied = await out.copyPages(src, src.getPageIndices());
+      copied.forEach((p) => out.addPage(p));
+    } else {
+      const isPng = /^image\/png$/i.test(file.type) || /\.png$/i.test(file.name || "");
+      const img = isPng ? await out.embedPng(bytes) : await out.embedJpg(bytes);
+      const page = out.addPage([img.width, img.height]);
+      page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+    }
+  }
+
+  if (out.getPageCount() === 0) throw new Error("no pages left");
+  return await out.save();
+}
+
+async function applyPreviewEdit() {
+  if (!previewSong) return;
+  const title = $("#mEditTitle").value.trim();
+  const artist = $("#mEditArtist").value.trim();
+  const key = $("#mEditKey").value.trim();
+  const addFiles = Array.from($("#mEditAddPages").files || []);
+  if (!title) {
+    alert("악보명을 입력해 주세요.");
+    $("#mEditTitle").focus();
+    return;
+  }
+
+  const hasPageEdit = previewEditDeletePages.size > 0 || addFiles.length > 0;
+  const prevTitle = previewSong.title;
+  previewSong.title = title;
+  previewSong.artist = artist;
+  previewSong.key = key;
+
+  try {
+    if (hasPageEdit) {
+      const editedBytes = await buildEditedPdfFromPreview(previewSong, previewEditDeletePages, addFiles);
+      const editedBlob = new Blob([editedBytes], { type: "application/pdf" });
+      const remoteUrl = await uploadEditedPdfBlob(editedBlob, previewSong);
+      const localUrl = remoteUrl || URL.createObjectURL(editedBlob);
+      previewSong.pdfUrl = localUrl;
+      previewSong.jpgUrl = "";
+      $("#mDownload").href = previewSong.pdfUrl;
+      $("#mDownload").setAttribute("download", `${sanitizeFilename(previewSong.title || "score")}.pdf`);
+      const patch = {
+        title: previewSong.title,
+        artist: previewSong.artist,
+        key: previewSong.key,
+        pdf_url: previewSong.pdfUrl,
+        jpg_url: "",
+      };
+      await saveSongMetaToSupabase(previewSong, patch);
+    } else {
+      await saveSongMetaToSupabase(previewSong, {
+        title: previewSong.title,
+        artist: previewSong.artist,
+        key: previewSong.key,
+      });
+    }
+
+    $("#mTitle").textContent = previewSong.title;
+    $("#mMeta").textContent = `${previewSong.artist} · ${previewSong.key}키`;
+    render();
+    exitPreviewEditMode();
+    openPreview(previewSong);
+  } catch (err) {
+    console.error(err);
+    previewSong.title = prevTitle;
+    alert("악보 수정 적용 중 오류가 발생했어요.");
+  }
 }
 
 function syncPreviewPartialSelectionUI() {
@@ -1154,7 +1358,75 @@ function getBaseName(filename = "") {
   return String(filename).replace(/\.[^.]+$/, "").trim();
 }
 
-function handleAddFileSubmit(e) {
+async function loadSongsFromSupabase() {
+  if (!window.SB?.isConfigured()) return [];
+  try {
+    const client = window.SB.getClient();
+    if (!client) return [];
+
+    const { data } = await client.auth.getSession();
+    if (!data?.session?.user?.id) return [];
+
+    const { data: rows, error } = await client
+      .from(SB_SONGS_TABLE)
+      .select("id, title, artist, key, pdf_url, jpg_url, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error || !Array.isArray(rows)) return [];
+    return rows.map((row) => ({
+      id: row.id,
+      title: row.title || "",
+      artist: row.artist || "",
+      key: row.key || "",
+      pdfUrl: row.pdf_url || "",
+      jpgUrl: row.jpg_url || "",
+      createdAt: row.created_at || new Date().toISOString(),
+    }));
+  } catch (err) {
+    console.error("Supabase songs 로드 오류:", err);
+    return [];
+  }
+}
+
+async function uploadSongFileToSupabase(file, userId) {
+  const client = window.SB?.getClient?.();
+  if (!client || !userId) throw new Error("Supabase session not ready");
+
+  let ext = String(file.name || "").split(".").pop()?.toLowerCase() || "bin";
+  if (!/^[a-z0-9]+$/.test(ext)) ext = "bin";
+  if (!["pdf", "jpg", "jpeg", "png", "webp", "bin"].includes(ext)) ext = "bin";
+  const random = Math.random().toString(36).slice(2, 8);
+  // Supabase 경로 유효성 이슈를 피하기 위해 업로드 파일명은 안전한 ASCII로 고정
+  const path = `${userId}/${Date.now()}_${random}.${ext}`;
+  const bytes = await file.arrayBuffer();
+  const blob = new Blob([bytes], { type: file.type || "application/octet-stream" });
+
+  const { error: upErr } = await client.storage
+    .from(SB_FILES_BUCKET)
+    .upload(path, blob, {
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+  if (upErr) throw upErr;
+
+  const { data: pub } = client.storage.from(SB_FILES_BUCKET).getPublicUrl(path);
+  if (!pub?.publicUrl) throw new Error("public url 생성 실패");
+  return pub.publicUrl;
+}
+
+function toSongRecordPayload(title, artist, key, fileUrl, file) {
+  const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+  const isImage = /^image\//.test(file.type) || /\.(jpg|jpeg|png|webp)$/i.test(file.name || "");
+  return {
+    title,
+    artist,
+    key,
+    pdf_url: isPdf ? fileUrl : "",
+    jpg_url: isImage ? fileUrl : "",
+  };
+}
+
+async function handleAddFileSubmit(e) {
   e.preventDefault();
   const fileInput = $("#addFileInput");
   const title = $("#addTitle").value.trim();
@@ -1179,20 +1451,82 @@ function handleAddFileSubmit(e) {
     }
   }
 
-  const addedSongs = [];
+  const addableFiles = [];
   for (const file of files) {
+    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+    const isImage = /^image\//.test(file.type) || /\.(jpg|jpeg|png|webp)$/i.test(file.name || "");
+    if (!isPdf && !isImage) continue;
+    addableFiles.push(file);
+  }
+
+  if (!addableFiles.length) {
+    alert("PDF 또는 이미지 파일만 추가할 수 있어요.");
+    return;
+  }
+
+  // Supabase 우선 저장 (팀 공용 반영)
+  if (window.SB?.isConfigured()) {
+    try {
+      const client = window.SB.getClient();
+      const { data } = await client.auth.getSession();
+      const userId = data?.session?.user?.id;
+      if (!userId) {
+        alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+        return;
+      }
+
+      const uploadedSongs = [];
+      for (const file of addableFiles) {
+        const autoTitle = getBaseName(file.name);
+        const songTitle = multiple ? autoTitle : (title || autoTitle);
+        const fileUrl = await uploadSongFileToSupabase(file, userId);
+        const payload = {
+          owner_id: userId,
+          ...toSongRecordPayload(songTitle, artist, key, fileUrl, file),
+        };
+        if (!payload.pdf_url && !payload.jpg_url) continue;
+
+        const { data: row, error } = await client
+          .from(SB_SONGS_TABLE)
+          .insert(payload)
+          .select("id, title, artist, key, pdf_url, jpg_url, created_at")
+          .single();
+        if (error) throw error;
+        uploadedSongs.push({
+          id: row.id,
+          title: row.title || "",
+          artist: row.artist || "",
+          key: row.key || "",
+          pdfUrl: row.pdf_url || "",
+          jpgUrl: row.jpg_url || "",
+          createdAt: row.created_at || new Date().toISOString(),
+        });
+      }
+
+      if (!uploadedSongs.length) {
+        alert("업로드 가능한 파일이 없습니다.");
+        return;
+      }
+      state.songs = [...uploadedSongs, ...state.songs];
+      closeAddModal();
+      $("#addFileForm").reset();
+      render();
+      return;
+    } catch (err) {
+      console.error(err);
+      alert("Supabase 업로드에 실패했어요. 로컬 추가로 전환합니다.");
+    }
+  }
+
+  // Fallback: 기존 로컬 추가
+  const addedSongs = [];
+  for (const file of addableFiles) {
     const autoTitle = getBaseName(file.name);
     const songTitle = multiple ? autoTitle : (title || autoTitle);
     const localSong = toLocalSong(file, songTitle, artist, key);
     if (!localSong.pdfUrl && !localSong.jpgUrl) continue;
     addedSongs.push(localSong);
   }
-
-  if (!addedSongs.length) {
-    alert("PDF 또는 이미지 파일만 추가할 수 있어요.");
-    return;
-  }
-
   state.songs = [...addedSongs, ...state.songs];
   closeAddModal();
   $("#addFileForm").reset();
@@ -1278,6 +1612,12 @@ function renderThumbStrip(doc, session, slideMode = false) {
       pageNumber,
       !slideMode && pageNumber === previewPage,
       async () => {
+        if (previewEditMode) {
+          if (previewEditDeletePages.has(pageNumber)) previewEditDeletePages.delete(pageNumber);
+          else previewEditDeletePages.add(pageNumber);
+          syncPreviewEditSelectionUI();
+          return;
+        }
         if (previewPartialSelectMode) {
           if (previewSelectedPages.has(pageNumber)) previewSelectedPages.delete(pageNumber);
           else previewSelectedPages.add(pageNumber);
@@ -1305,6 +1645,7 @@ function renderThumbStrip(doc, session, slideMode = false) {
     renderThumbCanvas(doc, pageNumber, thumb.canvas, session, targetWidth);
   }
   syncPreviewPartialSelectionUI();
+  syncPreviewEditSelectionUI();
 }
 
 async function renderThumbCanvas(doc, pageNumber, canvas, session, targetWidth = 128) {
@@ -1529,11 +1870,17 @@ function hydrateSelectionFromUrl() {
 }
 
 async function init() {
-  const res = await fetch("./songs.json", { cache: "no-store" });
-  const songs = await res.json();
+  let songs = [];
+  try {
+    const res = await fetch("./songs.json", { cache: "no-store" });
+    if (res.ok) songs = await res.json();
+  } catch (err) {
+    console.warn("songs.json 로드 실패:", err);
+  }
+  const remoteSongs = await loadSongsFromSupabase();
 
   // id 없으면 생성(안전)
-  state.songs = songs.map((s, i) => ({
+  const baseSongs = songs.map((s, i) => ({
     id: s.id || `song-${String(i+1).padStart(3,"0")}`,
     title: s.title || "",
     artist: s.artist || "",
@@ -1542,6 +1889,15 @@ async function init() {
     jpgUrl: s.jpgUrl || "",
     createdAt: s.createdAt || new Date().toISOString(),
   }));
+  const merged = [...remoteSongs, ...baseSongs];
+  const dedup = [];
+  const seen = new Set();
+  for (const song of merged) {
+    if (!song?.id || seen.has(song.id)) continue;
+    seen.add(song.id);
+    dedup.push(song);
+  }
+  state.songs = dedup;
 
   hydrateSelectionFromUrl();
   syncSortOptionsByViewport();
@@ -1685,6 +2041,23 @@ async function init() {
       alert("페이지 일부 다운로드 처리 중 오류가 발생했어요.");
     });
   });
+  $("#mEditSong").addEventListener("click", () => {
+    if (!previewSong) return;
+    if (previewEditMode) {
+      exitPreviewEditMode();
+    } else {
+      enterPreviewEditMode();
+    }
+  });
+  $("#mEditCancel").addEventListener("click", () => {
+    exitPreviewEditMode();
+  });
+  $("#mEditApply").addEventListener("click", () => {
+    applyPreviewEdit().catch((err) => {
+      console.error(err);
+      alert("악보 수정 적용 중 오류가 발생했어요.");
+    });
+  });
   $("#mDownload").addEventListener("click", async (e) => {
     if (!isMobileViewport()) return;
     e.preventDefault();
@@ -1740,5 +2113,5 @@ ${items.join("\n")}
 
 init().catch(err => {
   console.error(err);
-  alert("songs.json을 불러오지 못했어요. 로컬 서버로 열어주세요(아래 안내 참고).");
+  alert("초기화 중 오류가 발생했습니다. 콘솔 로그를 확인해 주세요.");
 });
