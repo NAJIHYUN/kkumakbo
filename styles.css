@@ -894,6 +894,23 @@ th.col-title{text-align:center}
   justify-content:flex-end;
   gap:8px;
 }
+#myInfoModal .modal-head .btn[data-close-myinfo="1"],
+#myInfoModal #btnMyInfoLogout,
+#myInfoModal #btnMyInfoChangePassword,
+#myInfoModal #btnMyInfoPackages{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:68px;
+  padding:6px 14px;
+  line-height:1.1;
+  vertical-align:middle;
+}
+#btnMyInfoLogout{
+  color:#d14343;
+  border-color:#d14343;
+  background:#fff;
+}
 #btnMyInfoPackages{
   text-decoration:none;
 }

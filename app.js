@@ -10,6 +10,7 @@ const state = {
   selectMode: false,
   selectedIds: [], // 순서대로 저장
   myRole: "all",
+  myNickname: "",
 };
 
 const SB_SONGS_TABLE = "songs";
@@ -1553,7 +1554,14 @@ async function handleAddFileSubmit(e) {
     }
   }
   if (candidateDupNames.length > 0) {
-    const ok = window.confirm("같은 파일이 이미 존재합니다. 업로드 하시겠습니까?");
+    const uniqueNames = Array.from(new Set(candidateDupNames));
+    const previewNames = uniqueNames.slice(0, 10);
+    const extraCount = Math.max(0, uniqueNames.length - previewNames.length);
+    const details = previewNames.map((name) => `- ${name}`).join("\n");
+    const extraText = extraCount > 0 ? `\n외 ${extraCount}개` : "";
+    const ok = window.confirm(
+      `같은 파일이 이미 존재합니다. 업로드 하시겠습니까?\n\n중복 악보:\n${details}${extraText}`
+    );
     if (!ok) return;
   }
 
@@ -1640,7 +1648,13 @@ async function handleAddFileSubmit(e) {
       return;
     } catch (err) {
       console.error(err);
-      alert("Supabase 업로드에 실패했어요. 로컬 추가로 전환합니다.");
+      alert("업로드에 실패했습니다. 네트워크/권한 설정을 확인해 주세요.");
+      addUploadInProgress = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalSubmitText;
+      }
+      return;
     }
   }
 
@@ -1944,8 +1958,10 @@ function buildShareLinkFromSelected(pkgMeta = {}) {
   }
   const pkg = String(pkgMeta.pkgName || "").trim();
   const team = String(pkgMeta.team || "").trim();
+  const by = String(state.myNickname || "").trim();
   if (pkg) params.set("pkg", pkg);
   if (team) params.set("team", team);
+  if (by) params.set("by", by);
   return `${location.origin}${location.pathname.replace(/index\.html?$/,"").replace(/\/$/,"/")}share.html?${params.toString()}`;
 }
 
@@ -1998,6 +2014,7 @@ async function initMyInfoModal() {
     "-"
   );
   const email = String(session.user?.email || "-");
+  state.myNickname = nickname;
   $("#myInfoNickname").textContent = nickname;
   $("#myInfoEmail").textContent = email;
 
@@ -2064,6 +2081,16 @@ async function initMyInfoModal() {
     } finally {
       myInfoPasswordUpdating = false;
     }
+  });
+
+  $("#btnMyInfoLogout")?.addEventListener("click", async () => {
+    const ok = confirm("로그아웃 하시겠습니까?");
+    if (!ok) return;
+    try {
+      await client.auth.signOut();
+    } catch {}
+    const next = `${location.pathname}${location.search}`;
+    location.replace(`./auth.html?next=${encodeURIComponent(next)}`);
   });
 }
 
@@ -2241,6 +2268,12 @@ async function init() {
       const { data } = await client.auth.getSession();
       const userId = data?.session?.user?.id;
       if (userId) {
+        const nicknameFromSession = String(
+          data?.session?.user?.user_metadata?.nickname ||
+          data?.session?.user?.email?.split("@")[0] ||
+          ""
+        ).trim();
+        if (nicknameFromSession) state.myNickname = nicknameFromSession;
         const { data: profile } = await client
           .from("profiles")
           .select("role")

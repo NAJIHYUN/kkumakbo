@@ -147,7 +147,6 @@ async function loadSongsFromSupabaseByIds(ids = []) {
 }
 
 async function setupShareTopActions() {
-  const btnLogout = $("#btnLogout");
   const btnGoIndex = $("#btnGoIndex");
   const toAuth = () => {
     const next = "./index.html";
@@ -162,18 +161,6 @@ async function setupShareTopActions() {
       const { data } = await client.auth.getSession();
       hasSession = !!data?.session;
     } catch {}
-  }
-
-  if (btnLogout && hasSession && client) {
-    btnLogout.classList.remove("hidden");
-    btnLogout.addEventListener("click", async (e) => {
-      e.preventDefault();
-      if (!confirm("로그아웃 하시겠습니까?")) return;
-      try {
-        await client.auth.signOut();
-      } catch {}
-      toAuth();
-    });
   }
 
   if (btnGoIndex) {
@@ -207,6 +194,7 @@ async function init() {
   const payloadSongs = decodeShareSongsPayload(url.searchParams.get("data") || "");
   const packageName = (url.searchParams.get("pkg") || "").trim();
   const packageTeam = (url.searchParams.get("team") || "").trim();
+  const packageBy = (url.searchParams.get("by") || "").trim();
   await setupShareTopActions();
 
   const songsJson = await loadSongsJsonSafe();
@@ -233,7 +221,10 @@ async function init() {
     const packageTitle = $("#packageTitle");
     if (packageTitle) packageTitle.textContent = packageName;
     const packageNamePreview = $("#packageNamePreview");
-    if (packageNamePreview) packageNamePreview.textContent = "닉네임";
+    if (packageNamePreview) packageNamePreview.textContent = packageBy || "닉네임";
+  } else {
+    const packageNamePreview = $("#packageNamePreview");
+    if (packageNamePreview && packageBy) packageNamePreview.textContent = packageBy;
   }
 
   const list = $("#shareSheets");
