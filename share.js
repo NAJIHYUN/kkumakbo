@@ -195,6 +195,7 @@ async function init() {
   const packageName = (url.searchParams.get("pkg") || "").trim();
   const packageTeam = (url.searchParams.get("team") || "").trim();
   const packageBy = (url.searchParams.get("by") || "").trim();
+  const hasRealPackageBy = !!packageBy && packageBy !== "닉네임";
   await setupShareTopActions();
 
   const songsJson = await loadSongsJsonSafe();
@@ -221,10 +222,12 @@ async function init() {
     const packageTitle = $("#packageTitle");
     if (packageTitle) packageTitle.textContent = packageName;
     const packageNamePreview = $("#packageNamePreview");
-    if (packageNamePreview) packageNamePreview.textContent = packageBy || "닉네임";
+    if (packageNamePreview) {
+      packageNamePreview.textContent = hasRealPackageBy ? packageBy : "공유된 악보 리스트";
+    }
   } else {
     const packageNamePreview = $("#packageNamePreview");
-    if (packageNamePreview && packageBy) packageNamePreview.textContent = packageBy;
+    if (packageNamePreview && hasRealPackageBy) packageNamePreview.textContent = packageBy;
   }
 
   const list = $("#shareSheets");
