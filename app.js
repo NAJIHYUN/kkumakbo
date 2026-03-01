@@ -368,9 +368,20 @@ function render() {
 
   updateSelectedBar();
   const canUseSelectionActions = state.selectMode && state.selectedIds.length > 0;
+  const mergeBtn = $("#btnMergeSelected");
   $("#btnClearSelected").disabled = !canUseSelectionActions;
   $("#btnShareSelected").disabled = !canUseSelectionActions;
-  $("#btnMergeSelected").disabled = !canUseSelectionActions;
+  if (mergeBtn) {
+    if (isMobileViewport()) {
+      mergeBtn.disabled = false;
+      mergeBtn.textContent = "악보 추가";
+      mergeBtn.setAttribute("aria-label", "악보 추가");
+    } else {
+      mergeBtn.disabled = !canUseSelectionActions;
+      mergeBtn.textContent = "악보 병합";
+      mergeBtn.setAttribute("aria-label", "악보 병합");
+    }
+  }
   renderScrollIndex();
   syncScrollIndexOffset();
   updateScrollIndexThumb();
@@ -2777,6 +2788,10 @@ async function init() {
   });
 
   $("#btnMergeSelected").addEventListener("click", async () => {
+    if (isMobileViewport()) {
+      openAddModal();
+      return;
+    }
     if (!state.selectMode || state.selectedIds.length === 0) return;
     if (!window.PDFLib) {
       alert("PDF 병합 라이브러리를 불러오지 못했어요.");

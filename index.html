@@ -24,7 +24,6 @@
       <div class="top-main">
         <div class="brand">
           <strong>꿈꾸는교회 악보함</strong>
-          <button id="btnAddFile" class="btn add-fab" type="button" aria-label="악보 추가">악보 추가</button>
         </div>
         <div class="top-actions">
           <a id="btnMyInfo" class="my-info-link hidden" href="./my-info.html" aria-label="나의 정보">
@@ -59,10 +58,10 @@
           <option value="latest">최신순</option>
         </select>
       </div>
-      <button id="btnSelectMode" class="btn">선택</button>
-      <button id="btnClearSelected" class="btn hidden" type="button">선택 초기화</button>
-      <button id="btnShareSelected" class="btn primary" disabled>패키지 생성</button>
-      <button id="btnMergeSelected" class="btn" disabled>악보 병합</button>
+      <button id="btnSelectMode" class="btn home-btn">선택</button>
+      <button id="btnClearSelected" class="btn home-btn hidden" type="button">선택 초기화</button>
+      <button id="btnShareSelected" class="btn home-btn primary" disabled>패키지 생성</button>
+      <button id="btnMergeSelected" class="btn home-btn" disabled>악보 병합</button>
     </section>
 
     <section id="selectedBar" class="selected-bar selected-bar-collapsed">
@@ -189,9 +188,8 @@
     <div class="modal-backdrop" data-close-add="1"></div>
     <div class="modal-card add-modal-card">
       <div class="modal-head">
-        <div>
-          <div class="m-title">악보 추가</div>
-          <div class="m-meta">PDF 또는 JPG를 업로드해 목록에 추가합니다.</div>
+        <div class="brand">
+          <strong class="m-title">악보 추가</strong>
         </div>
         <button class="btn" data-close-add="1">닫기</button>
       </div>
@@ -199,21 +197,35 @@
         <div class="add-form-grid">
           <label class="add-label">
             <span>제목</span>
-            <input id="addTitle" class="input" type="text" />
+            <input id="addTitle" class="input" type="text" placeholder="ex. 푯대를 향하여" />
           </label>
           <label class="add-label">
             <span>아티스트</span>
-            <input id="addArtist" class="input" type="text" />
+            <input id="addArtist" class="input" type="text" placeholder="ex. 어노인팅" />
           </label>
           <label class="add-label">
             <span>Key</span>
-            <input id="addKey" class="input" type="text" />
-          </label>
-          <label class="add-label">
-            <span>파일 (PDF/JPG, 이미지 다중 선택 가능)</span>
-            <input id="addFileInput" class="input" type="file" accept="application/pdf,image/*" multiple required />
+            <select id="addKey" class="select">
+              <option value="">선택</option>
+              <option value="C">C</option>
+              <option value="Db">Db</option>
+              <option value="D">D</option>
+              <option value="Eb">Eb</option>
+              <option value="E">E</option>
+              <option value="F">F</option>
+              <option value="F#">F#</option>
+              <option value="G">G</option>
+              <option value="Ab">Ab</option>
+              <option value="A">A</option>
+              <option value="Bb">Bb</option>
+              <option value="B">B</option>
+            </select>
           </label>
         </div>
+        <label class="add-file-field">
+          <span>파일 (PDF/JPG, 이미지 다중 선택 가능)</span>
+          <input id="addFileInput" class="input" type="file" accept="application/pdf,image/*" multiple required />
+        </label>
         <div id="addUploadProgressWrap" class="upload-progress hidden" aria-live="polite">
           <div class="upload-progress-head">
             <span id="addUploadProgressText">업로드 준비 중...</span>
@@ -225,6 +237,7 @@
         </div>
       </form>
       <div class="modal-foot">
+        <button class="btn add-modal-close-mobile" type="button" data-close-add="1">닫기</button>
         <button id="btnSubmitAddFile" class="btn primary" type="submit" form="addFileForm">추가</button>
       </div>
     </div>

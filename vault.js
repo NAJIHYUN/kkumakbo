@@ -240,12 +240,18 @@ async function init() {
   const title = root.dataset.vaultTitle || "보관함";
   const session = await getSupabaseSession();
   const nickname = getDisplayNickname(session);
-  const vaultIcon = vault === "high" ? "☁️" : vault === "middle" ? "😎" : "📂";
+  const vaultIconSrc = vault === "high"
+    ? "./assets/high.svg"
+    : vault === "middle"
+      ? "./assets/middle.png"
+      : "./assets/allvault.png";
   const searchInput = $("#vaultSearch");
   const clearSearchBtn = $("#btnClearVaultSearch");
 
   const titleEl = $("#vaultTitle");
-  if (titleEl) titleEl.textContent = `${vaultIcon} ${title}`;
+  if (titleEl) {
+    titleEl.innerHTML = `<img class="vault-title-icon" src="${vaultIconSrc}" alt="" />${title}`;
+  }
   document.title = `${title} 보관함`;
 
   await renderVault(vault, nickname, searchInput?.value || "");

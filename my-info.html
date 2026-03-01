@@ -19,8 +19,7 @@
 <body data-my-info="1">
   <header class="topbar">
     <div class="brand">
-      <strong>나의 정보</strong>
-      <span class="sub">계정 정보 및 비밀번호 변경</span>
+      <strong id="myInfoPageTitle">나의 정보</strong>
     </div>
     <div class="top-actions">
       <a class="link" href="./index.html">← 악보 목록</a>
@@ -38,6 +37,10 @@
           <span>이메일</span>
           <strong id="myInfoEmail" class="myinfo-value">-</strong>
         </div>
+        <div class="package-name-line">
+          <span>권한</span>
+          <strong id="myInfoRole" class="myinfo-value">-</strong>
+        </div>
         <label class="package-name-line" for="myInfoNewPassword">
           <span>새 비밀번호</span>
           <input id="myInfoNewPassword" class="input package-name-input" type="password" placeholder="5~15자 (영문/숫자/!@#)" />
@@ -46,13 +49,20 @@
           <span>비밀번호 확인</span>
           <input id="myInfoNewPasswordConfirm" class="input package-name-input" type="password" placeholder="비밀번호 확인" />
         </label>
-        <div id="myInfoStatus" class="myinfo-status"></div>
         <div class="myinfo-actions">
           <button id="btnMyInfoLogout" class="btn" type="button">로그아웃</button>
           <button id="btnMyInfoChangePassword" class="btn" type="button">비밀번호 변경</button>
-          <a id="btnMyInfoPackages" class="btn primary" href="./my-packages.html">내 패키지 보기</a>
         </div>
+        <div id="myInfoStatus" class="myinfo-status"></div>
       </div>
+    </section>
+    <section class="myinfo-packages-section">
+      <strong id="myInfoPackagesTitle" class="myinfo-packages-title">나의 패키지</strong>
+      <div class="vault-search-wrap">
+        <input id="myPackagesSearch" class="input" type="text" placeholder="검색 (예: 패키지명 / 초성)" />
+        <button id="btnClearMyPackagesSearch" class="vault-search-clear hidden" type="button" aria-label="검색어 전체 삭제">×</button>
+      </div>
+      <div id="myPackagesList" class="vault-list"></div>
     </section>
   </main>
 
