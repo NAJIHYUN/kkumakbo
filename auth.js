@@ -45,6 +45,12 @@ function validatePassword(password = "") {
   return "";
 }
 
+function validateRole(role = "") {
+  const value = String(role || "").trim().toLowerCase();
+  if (!["high", "middle", "all"].includes(value)) return "그룹을 선택해 주세요.";
+  return "";
+}
+
 function setupContactAdmin() {
   const btn = $("#btnContactAdmin");
   const messageEl = $("#contactMessage");
@@ -176,6 +182,17 @@ async function ensureApprovedOrSignOut(client, session) {
   return true;
 }
 
+async function syncProfileRole(client, session) {
+  const role = String(session?.user?.user_metadata?.role || "").trim().toLowerCase();
+  if (!["high", "middle", "all"].includes(role)) return;
+  try {
+    await client
+      .from("profiles")
+      .update({ role })
+      .eq("id", session.user.id);
+  } catch {}
+}
+
 async function isRegisteredEmail(client, email) {
   try {
     const { data, error } = await client.rpc("is_registered_email", { p_email: email });
@@ -201,6 +218,7 @@ async function initAuth() {
   const { data } = await client.auth.getSession();
   const current = data?.session || null;
   if (current) {
+    await syncProfileRole(client, current);
     const ok = await ensureApprovedOrSignOut(client, current);
     if (ok) {
       location.replace(nextPath());
@@ -212,12 +230,14 @@ async function initAuth() {
   const nicknameInput = $("#authNickname");
   const pwInput = $("#authPassword");
   const pwConfirmInput = $("#authPasswordConfirm");
+  const roleInput = $("#authRole");
   const authFields = $("#authFields");
   const authSub = $("#authSub");
   const lineNickname = $("#lineNickname");
   const lineEmail = $("#lineEmail");
   const linePassword = $("#linePassword");
   const linePwConfirm = $("#linePasswordConfirm");
+  const lineRole = $("#lineRole");
   const emailLabel = lineEmail?.querySelector("span");
   const btnEnterIn = $("#btnEnterSignIn");
   const btnEnterUp = $("#btnEnterSignUp");
@@ -324,6 +344,7 @@ async function initAuth() {
     lineNickname?.classList.add("hidden");
     linePassword?.classList.remove("hidden");
     linePwConfirm?.classList.add("hidden");
+    lineRole?.classList.add("hidden");
     btnSubmitIn?.classList.remove("hidden");
     btnSubmitUp?.classList.add("hidden");
     forgotLink?.classList.remove("hidden");
@@ -345,6 +366,7 @@ async function initAuth() {
     lineNickname?.classList.remove("hidden");
     linePassword?.classList.remove("hidden");
     linePwConfirm?.classList.remove("hidden");
+    lineRole?.classList.remove("hidden");
     btnSubmitIn?.classList.add("hidden");
     btnSubmitUp?.classList.remove("hidden");
     forgotLink?.classList.add("hidden");
@@ -415,6 +437,7 @@ async function initAuth() {
       return;
     }
 
+    await syncProfileRole(client, data.session);
     const ok = await ensureApprovedOrSignOut(client, data.session);
     if (!ok) return;
     location.replace(nextPath());
@@ -425,6 +448,7 @@ async function initAuth() {
     const email = String(emailInput?.value || "").trim();
     const password = String(pwInput?.dataset.realPassword || pwInput?.value || "");
     const passwordConfirm = String(pwConfirmInput?.value || "").trim();
+    const role = String(roleInput?.value || "").trim().toLowerCase();
     const nicknameErr = validateNickname(nickname);
     if (nicknameErr) { setStatus(nicknameErr, true); return; }
     const emailErr = validateEmail(email);
@@ -436,20 +460,27 @@ async function initAuth() {
       setStatus("비밀번호와 비밀번호 확인이 일치하지 않습니다.", true);
       return;
     }
+    const roleErr = validateRole(role);
+    if (roleErr) { setStatus(roleErr, true); return; }
 
-    const { error } = await client.auth.signUp({
+    const { data, error } = await client.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: getAuthRedirectUrl(),
         data: {
           nickname,
+          role,
         },
       },
     });
     if (error) {
       setStatus(error.message || "회원가입에 실패했습니다.", true);
       return;
+    }
+
+    if (data?.session) {
+      await syncProfileRole(client, data.session);
     }
 
     setStatus("회원가입 완료. 관리자 승인 후 로그인 가능합니다.");

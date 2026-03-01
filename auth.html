@@ -47,6 +47,15 @@
           <span>비밀번호 확인</span>
           <input id="authPasswordConfirm" class="auth-input" type="password" autocomplete="new-password" placeholder="비밀번호 확인" maxlength="15" />
         </label>
+        <label id="lineRole" class="auth-line">
+          <span>그룹</span>
+          <select id="authRole" class="auth-input auth-select">
+            <option value="">그룹 선택</option>
+            <option value="high">고등부</option>
+            <option value="middle">중등부</option>
+            <option value="all">기타 사용자</option>
+          </select>
+        </label>
       </div>
 
       <div id="authModeActions" class="auth-mode-actions hidden">

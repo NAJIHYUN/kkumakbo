@@ -2359,7 +2359,7 @@ body[data-my-info] #myInfoRole{
 .auth-shell{
   max-width:520px;
   margin:0 auto;
-  padding:24px 20px 120px;
+  padding:30px 30px 120px;
 }
 .auth-intro{
   min-height:calc(100dvh - 170px);
