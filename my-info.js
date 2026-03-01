@@ -8,6 +8,7 @@ const KOR_INITIALS = [
 ];
 
 let myInfoPasswordUpdating = false;
+const UI_THEME_STORAGE_KEY = "scorebox-ui-theme";
 
 function normalize(str = "") {
   return String(str).normalize("NFC").trim().toLowerCase();
@@ -80,6 +81,50 @@ function getRoleLabel(role = "") {
   if (value === "middle") return "중등부";
   if (value === "all") return "기타";
   return "-";
+}
+
+function getStoredTheme() {
+  if (window.ScoreboxTheme?.getStoredTheme) {
+    return window.ScoreboxTheme.getStoredTheme();
+  }
+  try {
+    const value = localStorage.getItem(UI_THEME_STORAGE_KEY);
+    return value === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
+function applyUiTheme(theme = "light") {
+  const nextTheme = theme === "dark" ? "dark" : "light";
+  if (window.ScoreboxTheme?.apply) {
+    window.ScoreboxTheme.apply(nextTheme);
+  } else {
+    document.documentElement.dataset.uiTheme = nextTheme;
+    document.body.dataset.uiTheme = nextTheme;
+  }
+
+  const toggleBtn = $("#btnThemeToggle");
+  const label = $("#themeToggleLabel");
+  if (toggleBtn) {
+    const isDark = nextTheme === "dark";
+    toggleBtn.classList.toggle("is-dark", isDark);
+    toggleBtn.setAttribute("aria-pressed", String(isDark));
+    toggleBtn.setAttribute("aria-label", isDark ? "라이트 모드로 전환" : "다크 모드로 전환");
+  }
+  if (label) {
+    label.textContent = nextTheme === "dark" ? "다크" : "라이트";
+  }
+}
+
+function saveUiTheme(theme = "light") {
+  if (window.ScoreboxTheme?.set) {
+    window.ScoreboxTheme.set(theme);
+    return;
+  }
+  try {
+    localStorage.setItem(UI_THEME_STORAGE_KEY, theme === "dark" ? "dark" : "light");
+  } catch {}
 }
 
 async function loadMyPackages() {
@@ -229,6 +274,7 @@ async function init() {
   document.title = pageTitle;
   $("#myInfoNickname").textContent = nickname;
   $("#myInfoEmail").textContent = email;
+  applyUiTheme(getStoredTheme());
 
   try {
     const { data: profile } = await client
@@ -285,6 +331,12 @@ async function init() {
       await client.auth.signOut();
     } catch {}
     location.replace("./auth.html");
+  });
+
+  $("#btnThemeToggle")?.addEventListener("click", () => {
+    const nextTheme = document.documentElement.dataset.uiTheme === "dark" ? "light" : "dark";
+    applyUiTheme(nextTheme);
+    saveUiTheme(nextTheme);
   });
 
   const searchInput = $("#myPackagesSearch");

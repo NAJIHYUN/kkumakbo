@@ -156,6 +156,28 @@ function getDisplayNickname(session) {
   return "닉네임";
 }
 
+async function shareLink(url, name = "패키지") {
+  const payload = {
+    title: `패키지: ${name}`,
+    text: `${name} 패키지 링크입니다.`,
+    url,
+  };
+  if (navigator.share) {
+    try {
+      await navigator.share(payload);
+      return;
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    alert("링크를 복사했어요.");
+  } catch {
+    prompt("복사해서 사용하세요:", url);
+  }
+}
+
 async function renderVault(vault, nickname = "닉네임", query = "") {
   const list = $("#vaultList");
   if (!list) return;
@@ -207,28 +229,14 @@ async function renderVault(vault, nickname = "닉네임", query = "") {
       window.open(item.url, "_blank");
     });
 
-    const copyBtn = document.createElement("button");
-    copyBtn.className = "btn vault-btn-copy";
-    copyBtn.textContent = "복사";
-    copyBtn.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(item.url);
-        alert("링크를 복사했어요.");
-      } catch {
-        prompt("복사해서 사용하세요:", item.url);
-      }
+    const shareBtn = document.createElement("button");
+    shareBtn.className = "btn vault-btn-share";
+    shareBtn.textContent = "공유";
+    shareBtn.addEventListener("click", async () => {
+      await shareLink(item.url, baseName);
     });
 
-    const delBtn = document.createElement("button");
-    delBtn.className = "btn vault-btn-delete";
-    delBtn.textContent = "삭제";
-    delBtn.addEventListener("click", async () => {
-      if (!confirm("정말 삭제할까요?")) return;
-      await deleteVaultItem(vault, item);
-      await renderVault(vault, nickname, query);
-    });
-
-    actions.append(openBtn, copyBtn, delBtn);
+    actions.append(openBtn, shareBtn);
     row.append(meta, actions);
     list.appendChild(row);
   });

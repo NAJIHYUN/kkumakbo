@@ -2907,7 +2907,7 @@ async function init() {
     if (e.target?.dataset?.closeAdd) closeAddModal();
   });
   $("#addFileForm").addEventListener("submit", handleAddFileSubmit);
-  $("#btnAddFile").addEventListener("click", openAddModal);
+  $("#btnAddFile")?.addEventListener("click", openAddModal);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       closeModal();
