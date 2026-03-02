@@ -84,7 +84,7 @@ a{color:inherit}
 .topbar{
   position:sticky;top:0;z-index:10;
   display:flex;justify-content:space-between;align-items:center;
-  padding:12px 14px;background:#fff;border-bottom:none
+  padding:20px;background:#fff;border-bottom:none
 }
 .index-page .topbar{
   display:flex;
@@ -1373,17 +1373,17 @@ body[data-my-info] #myInfoRole{
 
 /* Share page */
 .share-card{
-  background:#fff;border:none;border-radius:14px;padding:14px;margin-bottom:12px
+  background:#fff;border:none;border-radius:14px;padding:15px;margin-bottom:12px
 }
 .h2{margin:0 0 10px 0;font-size:15px}
 .summary-inline{display:flex;flex-wrap:wrap;gap:10px}
-.summary-item{display:inline-flex;align-items:center;gap:6px}
+.summary-item{display:inline-flex;align-items:center;gap:5px}
 .summary-num{
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:18px;
-  height:18px;
+  width:16px;
+  height:16px;
   border-radius:50%;
   background: #e7e7e7;
   color:#222;
@@ -1680,7 +1680,7 @@ body[data-my-info] #myInfoRole{
   border:1px solid #eee;
   border-radius:12px;
   background:#fafafa;
-  padding:10px 12px;
+  padding:0;
 }
 .sheet-head{
   display:flex;
@@ -1688,14 +1688,14 @@ body[data-my-info] #myInfoRole{
   gap:0;
   position:relative;
   padding-left:0;
-  margin-bottom:8px;
+  margin-bottom:0;
   transition:none;
 }
 .sheet-select-mode .sheet-head{
   padding-left:24px;
 }
 .sheet-title{
-  margin:0;
+  margin:20px 0 0 20px;
   font-family:var(--font-main);
   font-size:14px;
   font-weight:500;
@@ -1703,15 +1703,16 @@ body[data-my-info] #myInfoRole{
 }
 .page-gallery{
   display:flex;
-  gap:8px;
+  gap:0;
   overflow-x:auto;
   -webkit-overflow-scrolling:touch;
-  padding-bottom:4px;
+  padding-bottom:0;
 }
 .page-box{
   flex:0 0 auto;
   width:160px;
   position:relative;
+  margin:15px;
 }
 .sheet-select-mode .page-box,
 .sheet-select-mode .page-canvas{
@@ -1728,6 +1729,7 @@ body[data-my-info] #myInfoRole{
   font-size:11px;
   color:#666;
   margin-bottom:4px;
+  margin-left:4px;
 }
 .page-canvas{
   width:100%;
@@ -2644,6 +2646,8 @@ body[data-my-info] #myInfoRole{
   html[data-ui-theme="dark"] .mobile-tabbar-item.is-current .mobile-tabbar-profile,
   html[data-ui-theme="dark"] .vault-package-name,
   html[data-ui-theme="dark"] #packageTitle,
+  html[data-ui-theme="dark"] .h2,
+  html[data-ui-theme="dark"] .sheet-title,
   html[data-ui-theme="dark"] .brand,
   html[data-ui-theme="dark"] .m-title{
     color:#f9fafb;
@@ -2660,15 +2664,20 @@ body[data-my-info] #myInfoRole{
   html[data-ui-theme="dark"] .mobile-tabbar-item:not(.is-current),
   html[data-ui-theme="dark"] .mobile-tabbar-item:not(.is-current) .mobile-tabbar-label,
   html[data-ui-theme="dark"] #packageNamePreview,
-  html[data-ui-theme="dark"] .summary-text,
   html[data-ui-theme="dark"] .selected-title,
   html[data-ui-theme="dark"] .page-thumb-num{
     color:#8b95a1;
+  }
+  html[data-ui-theme="dark"] .summary-text{
+    color:#f2f4f6;
   }
   html[data-ui-theme="dark"] body[data-my-info] #myInfoNickname,
   html[data-ui-theme="dark"] body[data-my-info] #myInfoEmail,
   html[data-ui-theme="dark"] body[data-my-info] #myInfoRole{
     color:#b0b8c1;
+  }
+  html[data-ui-theme="dark"] .page-label{
+    color:#8b95a1;
   }
   html[data-ui-theme="dark"] .input,
   html[data-ui-theme="dark"] .select,
@@ -2748,6 +2757,11 @@ body[data-my-info] #myInfoRole{
     background:#191f28;
     border-color:#4e5968;
     color:#f2f4f6;
+  }
+  html[data-ui-theme="dark"] .sheet-item{
+    border:none;
+    padding:0;
+    background:#191f28;
   }
   html[data-ui-theme="dark"] #btnShareSelected{
     background:#4e5968;
@@ -2837,6 +2851,11 @@ body[data-my-info] #myInfoRole{
   html[data-ui-theme="dark"] .page-slide-badge{
     background:#191f28;
     color:#f9fafb;
+  }
+  html[data-ui-theme="dark"] .summary-num{
+    background:#191f28;
+    border:1px solid #4e5968;
+    color:#f2f4f6;
   }
   html[data-ui-theme="dark"] .badge:not(:empty){
     background:#c9e2ff;
