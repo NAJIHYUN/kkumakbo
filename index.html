@@ -61,7 +61,7 @@
       </div>
       <button id="btnSelectMode" class="btn home-btn">선택</button>
       <button id="btnClearSelected" class="btn home-btn hidden" type="button">선택 초기화</button>
-      <button id="btnShareSelected" class="btn home-btn primary" disabled>패키지 생성</button>
+      <button id="btnShareSelected" class="btn home-btn primary" disabled>콘티 생성</button>
       <button id="btnMergeSelected" class="btn home-btn" disabled>악보 병합</button>
     </section>
 
@@ -250,19 +250,19 @@
     <div class="modal-card package-modal-card">
       <div class="modal-head">
         <div>
-          <div class="m-title">패키지 생성</div>
-          <div class="m-meta">팀을 선택하고 공유 패키지를 생성합니다.</div>
+          <div class="m-title">콘티 생성</div>
+          <div class="m-meta">팀을 선택하고 공유 콘티를 생성합니다.</div>
         </div>
         <button id="btnClosePackageModal" class="btn" type="button">닫기</button>
       </div>
       <form id="packageForm" class="modal-body package-form">
         <label class="add-label package-name-line">
-          <span>패키지 이름</span>
+          <span>콘티 이름</span>
           <input id="packageNameInput" class="input package-name-input" type="text" placeholder="예: 260222 하오리 콘티" required />
         </label>
         <div class="add-label package-vault-line">
           <span>보관함</span>
-          <div class="team-toggle" role="radiogroup" aria-label="패키지 대상">
+          <div class="team-toggle" role="radiogroup" aria-label="콘티 대상">
             <label class="team-option">
               <input type="radio" name="packageTeam" value="high" />
               <span>고등부</span>
@@ -277,6 +277,10 @@
             </label>
           </div>
         </div>
+        <label class="add-label package-note-line">
+          <span>메모</span>
+          <textarea id="packageMemoInput" class="input package-name-input package-note-input" rows="4"></textarea>
+        </label>
       </form>
       <div class="modal-foot">
         <button id="btnSubmitPackage" class="btn primary" type="submit" form="packageForm">생성</button>

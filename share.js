@@ -14,12 +14,12 @@ function isMobileViewport() {
   return window.matchMedia("(max-width: 768px)").matches;
 }
 
-async function sharePdfBlobMobile(blob, filename, title = "PDF 공유") {
+async function sharePdfBlobMobile(blob, filename) {
   if (!isMobileViewport() || !navigator.share) return false;
   try {
     const file = new File([blob], filename, { type: "application/pdf" });
     if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ title, files: [file] });
+      await navigator.share({ files: [file] });
       return true;
     }
   } catch (err) {
@@ -195,6 +195,7 @@ async function init() {
   const packageName = (url.searchParams.get("pkg") || "").trim();
   const packageTeam = (url.searchParams.get("team") || "").trim();
   const packageBy = (url.searchParams.get("by") || "").trim();
+  const packageMemo = (url.searchParams.get("memo") || "").trim();
   const hasRealPackageBy = !!packageBy && packageBy !== "닉네임";
   await setupShareTopActions();
 
@@ -228,6 +229,16 @@ async function init() {
   } else {
     const packageNamePreview = $("#packageNamePreview");
     if (packageNamePreview && hasRealPackageBy) packageNamePreview.textContent = packageBy;
+  }
+  const packageMemoEl = $("#packageMemo");
+  if (packageMemoEl) {
+    if (packageMemo) {
+      packageMemoEl.textContent = packageMemo;
+      packageMemoEl.classList.remove("hidden");
+    } else {
+      packageMemoEl.textContent = "";
+      packageMemoEl.classList.add("hidden");
+    }
   }
 
   const list = $("#shareSheets");
@@ -332,8 +343,7 @@ async function init() {
       const safePkg = sanitizeFilename(packageName);
       const filename = safePkg ? `${safePkg}_전체.pdf` : "shared-sheets-merged.pdf";
       if (isMobileViewport()) {
-        const shareTitle = safePkg ? `${safePkg} 전체 PDF` : "공유 악보 전체";
-        const shared = await sharePdfBlobMobile(blob, filename, shareTitle);
+        const shared = await sharePdfBlobMobile(blob, filename);
         if (!shared) {
           alert("이 기기/브라우저에서는 파일 공유를 지원하지 않아요.");
         }
@@ -356,10 +366,10 @@ async function init() {
   if (btnSharePackageLink) {
     btnSharePackageLink.addEventListener("click", async () => {
       const shareUrl = location.href;
-      const shareTitle = packageName ? `악보 패키지: ${packageName}` : "공유 선택된 악보 목록";
+      const shareTitle = packageName ? `악보 콘티: ${packageName}` : "공유 선택된 악보 목록";
       const shareText = packageName
-        ? `${packageName} 패키지 링크입니다.\n${shareUrl}`
-        : `공유된 악보 패키지 링크입니다.\n${shareUrl}`;
+        ? `${packageName} 콘티 링크입니다.\n${shareUrl}`
+        : `공유된 악보 콘티 링크입니다.\n${shareUrl}`;
       const payload = {
         title: shareTitle,
         text: shareText,
@@ -427,8 +437,7 @@ async function init() {
         const safePkg = sanitizeFilename(packageName);
         const filename = safePkg ? `${safePkg}_선택.pdf` : "selected-sheets-merged.pdf";
         if (isMobileViewport()) {
-          const shareTitle = safePkg ? `${safePkg} 선택 PDF` : "선택 악보";
-          const shared = await sharePdfBlobMobile(blob, filename, shareTitle);
+          const shared = await sharePdfBlobMobile(blob, filename);
           if (!shared) {
             alert("이 기기/브라우저에서는 파일 공유를 지원하지 않아요.");
           }

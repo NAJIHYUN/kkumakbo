@@ -223,8 +223,16 @@ function render() {
   const rowActionDisabled = isMobileViewport() && state.selectMode;
   const disableMobileTitlePreview = isMobileViewport() && state.selectMode;
   const showMobileMoveHandle = isMobileViewport() && state.selectMode;
+  const songsToRender = (isMobileViewport() && state.selectMode && state.selectedIds.length > 0)
+    ? [
+      ...state.selectedIds
+        .map((id) => state.filtered.find((song) => song.id === id))
+        .filter(Boolean),
+      ...state.filtered.filter((song) => !state.selectedIds.includes(song.id)),
+    ]
+    : state.filtered;
 
-  for (const song of state.filtered) {
+  for (const song of songsToRender) {
     const tr = document.createElement("tr");
     tr.dataset.songId = song.id;
     tr.dataset.scrollToken = getScrollToken(song.title);
@@ -398,22 +406,6 @@ function applyMobileSelectedSticky() {
   });
 
   if (!isMobileViewport() || !state.selectMode || state.selectedIds.length === 0) return;
-
-  const selectedRows = rows
-    .filter((row) => row.classList.contains("selected-row"))
-    .sort((a, b) => Number(a.dataset.selectedOrder || "0") - Number(b.dataset.selectedOrder || "0"));
-
-  let topOffset = 0;
-  selectedRows.forEach((row, idx) => {
-    const rowHeight = row.getBoundingClientRect().height;
-    row.classList.add("mobile-sticky-row");
-    row.style.setProperty("--sticky-top", `${topOffset}px`);
-    row.style.setProperty("--sticky-z", String(30 + (selectedRows.length - idx)));
-    topOffset += rowHeight;
-  });
-  const lastRow = selectedRows[selectedRows.length - 1];
-  if (lastRow) lastRow.classList.add("mobile-sticky-last");
-
 }
 
 function getScrollToken(title = "") {
@@ -705,8 +697,8 @@ function toggleSelect(id) {
 }
 
 function clearMobileRowDropTarget() {
-  document.querySelectorAll(".mobile-row-drop-target").forEach((el) => {
-    el.classList.remove("mobile-row-drop-target");
+  document.querySelectorAll(".mobile-row-drop-before, .mobile-row-drop-after").forEach((el) => {
+    el.classList.remove("mobile-row-drop-before", "mobile-row-drop-after");
   });
 }
 
@@ -728,7 +720,7 @@ function getMobileRowDropTarget(e, dragId) {
   const targetId = target.dataset.songId;
   if (!targetId || targetId === dragId) return null;
   const rect = target.getBoundingClientRect();
-  const insertAfter = e.clientY > rect.top + rect.height / 2;
+  const insertAfter = e.clientY > rect.top + rect.height * 0.72;
   return { target, targetId, insertAfter };
 }
 
@@ -752,10 +744,8 @@ function startMobileRowDrag(e, row, id) {
     pointerId: e.pointerId,
     startX: e.clientX,
     startY: e.clientY,
-    dragging: true,
+    dragging: false,
   };
-  mobileRowDragState.row.classList.add("mobile-row-dragging");
-  mobileRowDragState.row.style.setProperty("--drag-dy", "0px");
   try {
     mobileRowDragState.row.setPointerCapture(e.pointerId);
   } catch {}
@@ -766,12 +756,24 @@ function moveMobileRowDrag(e) {
   if (mobileRowDragState.pointerId !== e.pointerId) return;
   if (e.pointerType === "touch" && !e.isPrimary) return;
 
+  const dx = e.clientX - mobileRowDragState.startX;
   const dy = e.clientY - mobileRowDragState.startY;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+
+  if (!mobileRowDragState.dragging && absDy > 14 && absDy > absDx + 4) {
+    mobileRowDragState.dragging = true;
+    mobileRowDragState.row.classList.add("mobile-row-dragging");
+    mobileRowDragState.row.style.setProperty("--drag-dy", "0px");
+  }
+  if (!mobileRowDragState.dragging) return;
 
   mobileRowDragState.row.style.setProperty("--drag-dy", `${dy}px`);
   const drop = getMobileRowDropTarget(e, mobileRowDragState.id);
   clearMobileRowDropTarget();
-  if (drop) drop.target.classList.add("mobile-row-drop-target");
+  if (drop) {
+    drop.target.classList.add(drop.insertAfter ? "mobile-row-drop-after" : "mobile-row-drop-before");
+  }
   e.preventDefault();
 }
 
@@ -787,8 +789,10 @@ function endMobileRowDrag(e) {
   const wasDragging = mobileRowDragState.dragging;
   const drop = wasDragging ? getMobileRowDropTarget(e, dragId) : null;
 
-  dragRow.classList.remove("mobile-row-dragging");
-  dragRow.style.removeProperty("--drag-dy");
+  if (wasDragging) {
+    dragRow.classList.remove("mobile-row-dragging");
+    dragRow.style.removeProperty("--drag-dy");
+  }
   clearMobileRowDropTarget();
   try {
     dragRow.releasePointerCapture(e.pointerId);
@@ -1082,18 +1086,20 @@ function getSongUploaderNickname(song = {}) {
 }
 
 function buildPreviewMeta(song = {}) {
-  const title = String(song?.title || "").trim();
+  const artist = String(song?.artist || "").trim();
   const key = String(song?.key || "").trim();
   const uploader = getSongUploaderNickname(song) || "닉네임";
-  return `${title} · ${key}키 (업로더 ${uploader})`;
+  const artistPart = artist || "-";
+  const keyPart = key ? `${key}키` : "-";
+  return `${artistPart}ㆍ${keyPart} (업로더 ${uploader})`;
 }
 
-async function sharePdfBlobMobile(blob, filename, title = "PDF 공유") {
+async function sharePdfBlobMobile(blob, filename) {
   if (!isMobileViewport() || !navigator.share) return false;
   try {
     const file = new File([blob], filename, { type: "application/pdf" });
     if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ title, files: [file] });
+      await navigator.share({ files: [file] });
       return true;
     }
   } catch (err) {
@@ -1371,7 +1377,7 @@ async function downloadOrSharePdfUrl(pdfUrl, filename) {
     const res = await fetch(pdfUrl, { cache: "no-store" });
     if (!res.ok) throw new Error("failed to fetch pdf");
     const blob = await res.blob();
-    const shared = await sharePdfBlobMobile(blob, filename, filename.replace(/\.pdf$/i, ""));
+    const shared = await sharePdfBlobMobile(blob, filename);
     if (!shared) {
       const fallbackUrl = URL.createObjectURL(blob);
       window.open(fallbackUrl, "_blank");
@@ -1739,7 +1745,7 @@ async function downloadPreviewPdfBySelection() {
     const suffix = getPdfPageSuffix(selectedPages);
     const filename = `${sanitizeFilename(previewSong.title || "score")}${suffix}.pdf`;
     if (isMobileViewport()) {
-      const shared = await sharePdfBlobMobile(blob, filename, previewSong.title || "PDF");
+      const shared = await sharePdfBlobMobile(blob, filename);
       if (shared) return;
     }
     forceDownloadBlob(blob, filename);
@@ -1759,7 +1765,7 @@ async function sharePreviewPdfBySelection() {
     const { blob, selectedPages } = await buildPdfBlobFromPreviewSelection();
     const suffix = getPdfPageSuffix(selectedPages);
     const filename = `${sanitizeFilename(previewSong.title || "score")}${suffix}.pdf`;
-    const shared = await sharePdfBlobMobile(blob, filename, `${previewSong.title} PDF`);
+    const shared = await sharePdfBlobMobile(blob, filename);
     if (!shared) {
       forceDownloadBlob(blob, filename);
       alert("공유를 지원하지 않아 PDF를 파일로 저장했어요.");
@@ -2341,7 +2347,15 @@ async function renderThumbCanvas(doc, pageNumber, canvas, session, targetWidth =
   const ctx = canvas.getContext("2d");
   await page.render({ canvasContext: ctx, viewport }).promise;
   if (imageEl) {
-    imageEl.src = canvas.toDataURL("image/png");
+    if (previewMobileSlideMode) {
+      imageEl.src = canvas.toDataURL("image/png");
+      imageEl.classList.remove("hidden");
+      canvas.classList.add("hidden");
+    } else {
+      imageEl.src = "";
+      imageEl.classList.add("hidden");
+      canvas.classList.remove("hidden");
+    }
   }
 }
 
@@ -2440,9 +2454,11 @@ function buildShareLinkFromSelected(pkgMeta = {}) {
   }
   const pkg = String(pkgMeta.pkgName || "").trim();
   const team = String(pkgMeta.team || "").trim();
+  const memo = String(pkgMeta.memo || "").trim();
   const by = String(state.myNickname || "").trim();
   if (pkg) params.set("pkg", pkg);
   if (team) params.set("team", team);
+  if (memo) params.set("memo", memo);
   if (by) params.set("by", by);
   return `${location.origin}${location.pathname.replace(/index\.html?$/,"").replace(/\/$/,"/")}share.html?${params.toString()}`;
 }
@@ -2506,10 +2522,10 @@ async function initMyInfoModal() {
 async function savePackageToVault(pkgMeta, link) {
   const vault = mapTeamToVault(pkgMeta?.team || "");
   if (!canCreateVaultByRole(state.myRole, vault)) {
-    alert("해당 보관함에 패키지를 생성할 권한이 없습니다.");
+    alert("해당 보관함에 콘티를 생성할 권한이 없습니다.");
     return false;
   }
-  const safeName = String(pkgMeta?.pkgName || "").trim() || "이름 없는 패키지";
+  const safeName = String(pkgMeta?.pkgName || "").trim() || "이름 없는 콘티";
   const item = {
     name: safeName,
     url: link,
@@ -2532,13 +2548,13 @@ async function savePackageToVault(pkgMeta, link) {
           });
           if (!error) return true;
           console.error("Supabase 보관함 저장 실패:", error);
-          alert("패키지 저장 권한이 없거나 저장에 실패했습니다.");
+          alert("콘티 저장 권한이 없거나 저장에 실패했습니다.");
           return false;
         }
       }
     } catch (err) {
       console.error("Supabase 보관함 저장 오류:", err);
-      alert("패키지 저장 중 오류가 발생했습니다.");
+      alert("콘티 저장 중 오류가 발생했습니다.");
       return false;
     }
   }
@@ -2560,6 +2576,7 @@ function openPackageCreateDialog() {
   const modal = $("#packageModal");
   const form = $("#packageForm");
   const input = $("#packageNameInput");
+  const memoInput = $("#packageMemoInput");
   const closeBtn = $("#btnClosePackageModal");
   const submitBtn = $("#btnSubmitPackage");
   const teamInputs = Array.from(form?.querySelectorAll("input[name='packageTeam']") || []);
@@ -2591,6 +2608,7 @@ function openPackageCreateDialog() {
       closeBtn?.removeEventListener("click", onCancel);
       modal.removeEventListener("click", onBackdrop);
       input.removeEventListener("input", onChange);
+      memoInput?.removeEventListener("input", onChange);
       teamInputs.forEach((el) => el.removeEventListener("change", onChange));
       resolve(value);
     };
@@ -2600,7 +2618,7 @@ function openPackageCreateDialog() {
       const pkgName = input.value.trim();
       const team = form.querySelector("input[name='packageTeam']:checked")?.value || "";
       if (!pkgName) {
-        input.setCustomValidity("패키지 이름은 필수입니다.");
+        input.setCustomValidity("콘티 이름은 필수입니다.");
         input.reportValidity();
         input.focus();
         return;
@@ -2608,13 +2626,14 @@ function openPackageCreateDialog() {
       if (!team) return;
       const vault = mapTeamToVault(team);
       if (!canCreateVaultByRole(state.myRole, vault)) {
-        alert("해당 보관함에 패키지를 생성할 권한이 없습니다.");
+        alert("해당 보관함에 콘티를 생성할 권한이 없습니다.");
         return;
       }
       input.setCustomValidity("");
       closeWith({
         pkgName,
         team,
+        memo: memoInput?.value.trim() || "",
       });
     };
     const onCancel = () => closeWith(null);
@@ -2631,6 +2650,7 @@ function openPackageCreateDialog() {
 
     input.value = "";
     input.setCustomValidity("");
+    if (memoInput) memoInput.value = "";
     teamInputs.forEach((el) => {
       el.checked = false;
     });
@@ -2641,6 +2661,7 @@ function openPackageCreateDialog() {
 
     form.addEventListener("submit", onSubmit);
     input.addEventListener("input", onChange);
+    memoInput?.addEventListener("input", onChange);
     teamInputs.forEach((el) => el.addEventListener("change", onChange));
     closeBtn?.addEventListener("click", onCancel);
     modal.addEventListener("click", onBackdrop);

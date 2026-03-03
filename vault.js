@@ -156,10 +156,10 @@ function getDisplayNickname(session) {
   return "닉네임";
 }
 
-async function shareLink(url, name = "패키지") {
+async function shareLink(url, name = "콘티") {
   const payload = {
-    title: `패키지: ${name}`,
-    text: `${name} 패키지 링크입니다.`,
+    title: `콘티: ${name}`,
+    text: `${name} 콘티 링크입니다.`,
     url,
   };
   if (navigator.share) {
@@ -188,7 +188,7 @@ async function renderVault(vault, nickname = "닉네임", query = "") {
   if (!items.length) {
     const empty = document.createElement("div");
     empty.className = "vault-empty";
-    empty.textContent = "저장된 패키지가 없습니다.";
+    empty.textContent = "저장된 콘티가 없습니다.";
     list.appendChild(empty);
     return;
   }
@@ -202,7 +202,7 @@ async function renderVault(vault, nickname = "닉네임", query = "") {
 
     const name = document.createElement("div");
     name.className = "vault-item-name";
-    const baseName = item.name || "이름 없는 패키지";
+    const baseName = item.name || "이름 없는 콘티";
     const packageNameEl = document.createElement("span");
     packageNameEl.className = "vault-package-name";
     packageNameEl.textContent = baseName;

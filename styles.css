@@ -837,6 +837,10 @@ th.col-title{text-align:center}
   background:#fff;
   vertical-align:top;
 }
+.page-thumb-image.hidden,
+.page-thumb-canvas.hidden{
+  display:none !important;
+}
 .page-thumb.page-slide .page-thumb-canvas{
   border:1px solid #ccc;
   border-radius:10px;
@@ -1093,7 +1097,7 @@ body[data-my-info] #myInfoNewPasswordConfirm::placeholder{
   background:transparent;
   outline:none;
   box-shadow:none;
-  font-size:20px;
+  font-size:18px;
   color:#171c26;
   text-align:center;
   width:100%;
@@ -1252,11 +1256,33 @@ body[data-my-info] #myInfoRole{
   gap:12px;
   padding:14px 0;
 }
+.package-note-line{
+  display:grid;
+  grid-template-columns:3fr 7fr;
+  align-items:flex-start;
+  gap:12px;
+  padding:14px 0;
+}
 .package-vault-line.add-label > span{
   color:#4f5766;
   font-size:15px;
   font-weight:500;
   line-height:1.2;
+}
+.package-note-line.add-label > span{
+  color:#4f5766;
+  font-size:15px;
+  font-weight:500;
+  line-height:1.2;
+  padding-top:10px;
+}
+.package-note-input{
+  min-height:96px;
+  padding:10px 12px;
+  line-height:1.45;
+  resize:vertical;
+  text-align:start;
+  background:#bfbfbf;
 }
 .add-form-grid{
   display:grid;
@@ -1701,6 +1727,17 @@ body[data-my-info] #myInfoRole{
   font-weight:500;
   line-height:20px;
 }
+.share-note{
+  margin:0 0 12px;
+  padding:12px 14px;
+  border:none;
+  border-radius:12px;
+  background:#fafafa;
+  color:#4e5968;
+  font-size:14px;
+  line-height:1.55;
+  white-space:pre-wrap;
+}
 .page-gallery{
   display:flex;
   gap:0;
@@ -1901,10 +1938,8 @@ body[data-my-info] #myInfoRole{
     cursor:grabbing;
   }
   .table tbody tr.mobile-row-dragging{
-    z-index:90;
-  }
-  .table tbody tr.mobile-row-drop-target td{
-    border-top:2px solid #2f80ed !important;
+    position:relative;
+    z-index:140;
   }
   .table-body{
     border-collapse:separate;
@@ -1922,19 +1957,30 @@ body[data-my-info] #myInfoRole{
   }
   .table tbody tr.mobile-sticky-row.mobile-row-dragging td,
   .table tbody tr.mobile-row-dragging td{
+    position:relative;
     transform:translateY(var(--drag-dy, 0px)) scale(1.01);
-    box-shadow:inset 0 0 0 9999px #fff !important;
-    z-index:120 !important;
+    background:#f2f8ff;
+    box-shadow:0 10px 18px -10px rgba(0,0,0,.18), inset 0 0 0 9999px #f2f8ff !important;
+    z-index:160 !important;
     pointer-events:none;
   }
   .table tbody tr.mobile-row-dragging{
-    filter:drop-shadow(0 14px 28px rgba(0,0,0,.22));
+    filter:none;
+  }
+  .table tbody tr.mobile-row-drop-before td{
+    border-top:2px solid #2f80ed !important;
+  }
+  .table tbody tr.mobile-row-drop-after td{
+    border-bottom:2px solid #2f80ed !important;
   }
   .topbar{
     align-items:center;
     justify-content:space-between;
-    padding:15px;
+    padding:20px;
     flex-direction:row;
+  }
+  .brand{
+    align-items:center;
   }
   .brand{
     flex-wrap:nowrap;
@@ -1985,7 +2031,7 @@ body[data-my-info] #myInfoRole{
     display:none;
   }
   body[data-share] .container{
-    padding:20px;
+    padding:0 20px;
   }
   body[data-my-info] .top-actions{
     display:none;
@@ -2118,6 +2164,16 @@ body[data-my-info] #myInfoRole{
     overflow-wrap:anywhere;
     line-height:1.25;
   }
+  .package-note-line{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  .package-note-line.add-label > span{
+    padding-top:0;
+  }
+  .package-note-input{
+    min-height:120px;
+  }
   .smallbtn{
     display:inline-flex;
     align-items:center;
@@ -2127,6 +2183,11 @@ body[data-my-info] #myInfoRole{
     padding:6px 4px;
     font-size:11px;
     white-space:nowrap;
+  }
+  .share-card{
+    padding:10px;
+    margin-bottom:10px;
+    border-radius:0;
   }
   .table td.col-act .smallbtn{
     width:30px;
@@ -2621,6 +2682,18 @@ body[data-my-info] #myInfoRole{
     background:transparent;
     box-shadow:none !important;
   }
+  html[data-ui-theme="dark"] .table tbody tr.mobile-sticky-row.mobile-row-dragging td,
+  html[data-ui-theme="dark"] .table tbody tr.mobile-row-dragging td{
+    background:#191f28;
+    box-shadow:0 10px 18px -10px rgba(0,0,0,.32), inset 0 0 0 9999px #191f28 !important;
+    z-index:160 !important;
+  }
+  html[data-ui-theme="dark"] .table tbody tr.mobile-row-drop-before td{
+    border-top:2px solid #c9e2ff !important;
+  }
+  html[data-ui-theme="dark"] .table tbody tr.mobile-row-drop-after td{
+    border-bottom:2px solid #c9e2ff !important;
+  }
   html[data-ui-theme="dark"] th,
   html[data-ui-theme="dark"] td,
   html[data-ui-theme="dark"] .package-name-line,
@@ -2660,6 +2733,7 @@ body[data-my-info] #myInfoRole{
   }
   html[data-ui-theme="dark"] .artist-text,
   html[data-ui-theme="dark"] .artist-sub,
+  html[data-ui-theme="dark"] .col-key,
   html[data-ui-theme="dark"] .vault-item-date,
   html[data-ui-theme="dark"] .vault-item-nickname,
   html[data-ui-theme="dark"] .m-meta,
@@ -2673,6 +2747,18 @@ body[data-my-info] #myInfoRole{
   }
   html[data-ui-theme="dark"] .summary-text{
     color:#f2f4f6;
+  }
+  html[data-ui-theme="dark"] .share-note{
+    background:#191f28;
+    border-color:#4e5968;
+    color:#b0b8c1;
+  }
+  html[data-ui-theme="dark"] .package-note-input{
+    background:#191f28;
+  }
+  html[data-ui-theme="dark"] #packageMemoInput{
+    background:#191f28;
+    border-color:#4e5968;
   }
   html[data-ui-theme="dark"] body[data-my-info] #myInfoNickname,
   html[data-ui-theme="dark"] body[data-my-info] #myInfoEmail,
@@ -2857,7 +2943,7 @@ body[data-my-info] #myInfoRole{
   }
   html[data-ui-theme="dark"] .summary-num{
     background:#191f28;
-    border:1px solid #4e5968;
+    border:none;
     color:#f2f4f6;
   }
   html[data-ui-theme="dark"] .badge:not(:empty){

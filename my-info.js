@@ -137,7 +137,7 @@ async function loadMyPackages() {
   if (error || !Array.isArray(data)) return [];
   return data.map((row) => ({
     id: row.id,
-    name: row.name || "이름 없는 패키지",
+    name: row.name || "이름 없는 콘티",
     url: row.url || "",
     vault: row.vault || "all",
     vaultLabel: getVaultLabel(row.vault),
@@ -152,10 +152,10 @@ async function deletePackage(id) {
   return !error;
 }
 
-async function shareLink(url, name = "패키지") {
+async function shareLink(url, name = "콘티") {
   const payload = {
-    title: `패키지: ${name}`,
-    text: `${name} 패키지 링크입니다.`,
+    title: `콘티: ${name}`,
+    text: `${name} 콘티 링크입니다.`,
     url,
   };
   if (navigator.share) {
@@ -183,7 +183,7 @@ async function renderPackages(query = "") {
   if (!items.length) {
     const empty = document.createElement("div");
     empty.className = "vault-empty";
-    empty.textContent = "생성한 패키지가 없습니다.";
+    empty.textContent = "생성한 콘티가 없습니다.";
     list.appendChild(empty);
     return;
   }
@@ -232,7 +232,7 @@ async function renderPackages(query = "") {
     delBtn.className = "btn vault-btn-delete";
     delBtn.textContent = "삭제";
     delBtn.addEventListener("click", async () => {
-      if (!confirm("정말 삭제할까요?")) return;
+      if (!confirm(`${item.name}를 삭제할까요? 삭제된 콘티는 복구가 불가합니다.`)) return;
       const ok = await deletePackage(item.id);
       if (!ok) {
         alert("삭제에 실패했어요.");
@@ -267,7 +267,7 @@ async function init() {
   );
   const email = String(session.user?.email || "-");
   const pageTitle = nickname && nickname !== "-" ? `${nickname}님의 정보` : "나의 정보";
-  const packagesTitle = nickname && nickname !== "-" ? `${nickname}님의 패키지` : "나의 패키지";
+  const packagesTitle = nickname && nickname !== "-" ? `${nickname}님의 콘티` : "나의 콘티";
 
   $("#myInfoPageTitle").textContent = pageTitle;
   $("#myInfoPackagesTitle").textContent = packagesTitle;
