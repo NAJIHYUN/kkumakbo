@@ -223,16 +223,8 @@ function render() {
   const rowActionDisabled = isMobileViewport() && state.selectMode;
   const disableMobileTitlePreview = isMobileViewport() && state.selectMode;
   const showMobileMoveHandle = isMobileViewport() && state.selectMode;
-  const songsToRender = (isMobileViewport() && state.selectMode && state.selectedIds.length > 0)
-    ? [
-      ...state.selectedIds
-        .map((id) => state.filtered.find((song) => song.id === id))
-        .filter(Boolean),
-      ...state.filtered.filter((song) => !state.selectedIds.includes(song.id)),
-    ]
-    : state.filtered;
 
-  for (const song of songsToRender) {
+  for (const song of state.filtered) {
     const tr = document.createElement("tr");
     tr.dataset.songId = song.id;
     tr.dataset.scrollToken = getScrollToken(song.title);
@@ -376,9 +368,17 @@ function render() {
 
   updateSelectedBar();
   const canUseSelectionActions = state.selectMode && state.selectedIds.length > 0;
+  const selectModeBtn = $("#btnSelectMode");
+  const clearSelectedBtn = $("#btnClearSelected");
+  const shareSelectedBtn = $("#btnShareSelected");
   const mergeBtn = $("#btnMergeSelected");
-  $("#btnClearSelected").disabled = !canUseSelectionActions;
-  $("#btnShareSelected").disabled = !canUseSelectionActions;
+  if (selectModeBtn) {
+    selectModeBtn.classList.toggle("is-active", state.selectMode);
+  }
+  clearSelectedBtn.disabled = !canUseSelectionActions;
+  shareSelectedBtn.disabled = !canUseSelectionActions;
+  clearSelectedBtn.classList.toggle("has-selection", canUseSelectionActions);
+  shareSelectedBtn.classList.toggle("has-selection", canUseSelectionActions);
   if (mergeBtn) {
     if (isMobileViewport()) {
       mergeBtn.disabled = false;
@@ -406,6 +406,22 @@ function applyMobileSelectedSticky() {
   });
 
   if (!isMobileViewport() || !state.selectMode || state.selectedIds.length === 0) return;
+
+  const selectedRows = rows
+    .filter((row) => row.classList.contains("selected-row"))
+    .sort((a, b) => Number(a.dataset.selectedOrder || "0") - Number(b.dataset.selectedOrder || "0"));
+
+  let topOffset = 0;
+  selectedRows.forEach((row, idx) => {
+    const rowHeight = row.getBoundingClientRect().height;
+    row.classList.add("mobile-sticky-row");
+    row.style.setProperty("--sticky-top", `${topOffset}px`);
+    row.style.setProperty("--sticky-z", String(30 + (selectedRows.length - idx)));
+    topOffset += rowHeight;
+  });
+
+  const lastRow = selectedRows[selectedRows.length - 1];
+  if (lastRow) lastRow.classList.add("mobile-sticky-last");
 }
 
 function getScrollToken(title = "") {
