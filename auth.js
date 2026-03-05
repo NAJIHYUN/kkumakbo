@@ -410,8 +410,20 @@ async function initAuth() {
   btnSubmitIn?.addEventListener("click", () => withPending(async () => {
     const email = String(emailInput?.value || "").trim();
     const password = String(pwInput?.dataset.realPassword || pwInput?.value || "");
-    if (!email || !password) {
-      setStatus("닉네임/이메일과 비밀번호를 입력해 주세요.", true);
+    if (!email && !password) {
+      setStatus("이메일과 비밀번호를 입력해 주세요.", true);
+      return;
+    }
+    if (!email) {
+      setStatus("이메일 주소를 입력해 주세요.", true);
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setStatus("올바른 이메일 형식으로 입력해 주세요.", true);
+      return;
+    }
+    if (!password) {
+      setStatus("비밀번호를 입력해 주세요.", true);
       return;
     }
 

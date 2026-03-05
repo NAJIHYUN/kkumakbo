@@ -141,11 +141,10 @@ function syncSortOptionsByViewport() {
   if (!sort) return;
   const current = sort.value;
   sort.innerHTML = `
+    <option value="korean">가나다순</option>
     <option value="latest">최신순</option>
-    <option value="g2a">가-A</option>
-    <option value="a2g">A-가</option>
   `;
-  sort.value = ["latest", "g2a", "a2g"].includes(current) ? current : "g2a";
+  sort.value = ["korean", "latest"].includes(current) ? current : "korean";
 }
 
 function renderSortDropdownFromSelect() {
