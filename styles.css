@@ -347,8 +347,27 @@ body[data-vault] .brand-social{
 
 .container{max-width:1100px;margin:0 auto;padding:14px}
 .controls{
-  display:grid;grid-template-columns: 1fr 140px 90px 90px 120px 120px 100px;
-  gap:10px;align-items:center;margin-bottom:12px
+  display:flex;
+  flex-wrap:nowrap;
+  gap:10px;
+  align-items:center;
+  margin-bottom:12px;
+}
+.controls > .btn.home-btn{
+  flex:0 0 auto;
+}
+.controls .search-wrap{
+  flex:1 1 auto;
+  min-width:0;
+  width:auto;
+}
+.controls #sortDropdown{
+  flex:0 0 auto;
+  width:fit-content;
+}
+.controls #sortDropdown .sort-trigger{
+  width:auto;
+  min-width:max-content;
 }
 .input,.select{
   width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:12px;background:#fff;
@@ -2155,20 +2174,23 @@ body[data-my-info] #myInfoRole{
     flex:0 0 auto;
   }
   .controls{
-    grid-template-columns:repeat(9,minmax(0,1fr));
-    gap:8px;
+    display:flex;
+    flex-wrap:nowrap;
+    gap:6px;
   }
   .index-page .controls{
     align-items:center;
     min-height:36px;
   }
-  .controls .search-wrap{grid-column:1 / 4}
-  .controls #sortDropdown{grid-column:4 / 6}
-  .controls #btnSelectMode{grid-column:6 / 7}
-  .controls #btnClearSelected{grid-column:7 / 8}
-  .controls #btnShareSelected{grid-column:8 / 9}
-  .controls #btnMergeSelected{grid-column:9 / 10}
-  .controls #btnAddFile{grid-column:1 / 13}
+  .controls .search-wrap{
+    flex:1 1 auto;
+    min-width:0;
+    width:auto;
+  }
+  .controls #sortDropdown{
+    flex:0 0 auto;
+    width:fit-content;
+  }
   .index-page .controls .search-wrap,
   .index-page .controls .sort-trigger{
     min-height:36px;

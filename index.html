@@ -47,6 +47,9 @@
 
   <main class="container">
     <section class="controls">
+      <button id="btnSelectMode" class="btn home-btn">선택</button>
+      <button id="btnClearSelected" class="btn home-btn hidden" type="button">선택 초기화</button>
+      <button id="btnShareSelected" class="btn home-btn primary" disabled>콘티 생성</button>
       <div class="search-wrap">
         <input id="q" class="input" type="text" placeholder="악보 검색" />
         <button id="btnClearSearch" class="search-clear hidden" type="button" aria-label="검색어 지우기">×</button>
@@ -59,9 +62,6 @@
           <option value="latest">최신순</option>
         </select>
       </div>
-      <button id="btnSelectMode" class="btn home-btn">선택</button>
-      <button id="btnClearSelected" class="btn home-btn hidden" type="button">선택 초기화</button>
-      <button id="btnShareSelected" class="btn home-btn primary" disabled>콘티 생성</button>
       <button id="btnMergeSelected" class="btn home-btn" disabled>악보 병합</button>
     </section>
 
