@@ -56,15 +56,61 @@ function setupContactAdmin() {
   const messageEl = $("#contactMessage");
   if (!btn || !messageEl) return;
 
-  btn.addEventListener("click", () => {
-    const body = String(messageEl.value || "").trim();
-    if (!body) {
+  btn.addEventListener("click", async () => {
+    const message = String(messageEl.value || "").trim();
+    if (!message) {
       setStatus("문의 내용을 입력해 주세요.", true);
       return;
     }
-    const to = "emily_1004@naver.com";
-    const mailto = `mailto:${to}?body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
+
+    if (!window.SB?.isConfigured?.()) {
+      setStatus("문의 전송 설정이 비어 있습니다. 관리자에게 문의해 주세요.", true);
+      return;
+    }
+    const client = window.SB.getClient?.();
+    if (!client) {
+      setStatus("문의 전송 클라이언트를 초기화하지 못했습니다.", true);
+      return;
+    }
+
+    const prevText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "전송 중...";
+    try {
+      const nickname = String($("#authNickname")?.value || "").trim();
+      const email = String($("#authEmail")?.value || "").trim();
+      const role = String($("#authRole")?.value || "").trim().toLowerCase();
+      const mode = !$("#btnSubmitSignUp")?.classList.contains("hidden")
+        ? "signup"
+        : !$("#btnSubmitSignIn")?.classList.contains("hidden")
+          ? "signin"
+          : "intro";
+
+      const payload = {
+        message,
+        nickname: nickname || null,
+        email: email || null,
+        role: role || null,
+        mode,
+        source: "auth",
+      };
+
+      const { error } = await client.from("contact_messages").insert(payload);
+      if (error) {
+        console.error("contact_messages insert 실패:", error);
+        setStatus("문의 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.", true);
+        return;
+      }
+
+      messageEl.value = "";
+      setStatus("문의가 전송되었습니다.");
+    } catch (err) {
+      console.error(err);
+      setStatus("문의 전송 중 오류가 발생했습니다.", true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = prevText;
+    }
   });
 }
 
