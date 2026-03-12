@@ -879,7 +879,7 @@ th.col-title{text-align:center}
 .hidden{display:none}
 
 /* Modal */
-.modal{position:fixed;inset:0;z-index:100}
+.modal{position:fixed;inset:0;z-index:220}
 .modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35)}
 .modal-card{
   position:relative;left:50%;transform:translateX(-50%);margin-top:6vh;max-width:900px;width:92vw;
@@ -2446,7 +2446,7 @@ body[data-share].share-team-middle .page-box.selected .page-canvas{
     min-width:0;
     height:36px;
     min-height:36px;
-    padding:0 12px;
+    padding:0 10px;
     font-size:13px;
     line-height:1;
   }
@@ -2459,17 +2459,28 @@ body[data-share].share-team-middle .page-box.selected .page-canvas{
     margin-bottom:0;
   }
   body[data-songlist] .songlist-search-wrap{
-    flex:1 1 auto;
+    flex:1 1 0;
     margin-bottom:0;
     min-width:0;
     position:relative;
   }
   body[data-songlist] .songlist-search-wrap .input{
-    padding-right:30px;
+    text-align:left;
+    padding-left:0;
+    padding-right:24px;
+    min-width:0;
+    font-size:13px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  body[data-songlist] .songlist-search-wrap .input::placeholder{
+    text-align:left;
+    font-size:13px;
   }
   body[data-songlist] .songlist-search-icon{
     position:absolute;
-    right:10px;
+    right:8px;
     top:50%;
     transform:translateY(-50%);
     width:14px;
@@ -2491,10 +2502,11 @@ body[data-share].share-team-middle .page-box.selected .page-canvas{
   }
   body[data-songlist] .songlist-sort{
     flex:0 0 auto;
-    width:auto;
-    min-width:76px;
+    width:64px;
+    min-width:0;
     height:36px;
-    padding:0 24px 0 8px;
+    padding:0 18px 0 6px;
+    font-size:12px;
     -webkit-appearance:none;
     -moz-appearance:none;
     appearance:none;
@@ -2506,11 +2518,16 @@ body[data-share].share-team-middle .page-box.selected .page-canvas{
   body[data-songlist] .songlist-vault-btn{
     display:inline-flex;
     align-items:center;
-    gap:4px;
+    gap:3px;
     text-decoration:none;
-    min-width:52px;
-    padding:0 6px;
-    font-size:11px;
+    min-width:0;
+    padding:0 9px;
+    font-size:10px;
+    white-space:nowrap;
+  }
+  body[data-songlist] .controls > .btn.home-btn.songlist-vault-btn{
+    min-width:0;
+    padding:0 9px;
   }
   body[data-songlist] .songlist-vault-btn.is-active{
     background:#e9f2ff;

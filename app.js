@@ -229,7 +229,7 @@ function syncSortOptionsByViewport() {
     <option value="korean">가나다순</option>
     <option value="latest">최신순</option>
   `;
-  sort.value = ["korean", "latest"].includes(current) ? current : "korean";
+  sort.value = ["korean", "latest"].includes(current) ? current : "latest";
 }
 
 function renderSortDropdownFromSelect() {
@@ -1167,6 +1167,34 @@ function getAddSubmitButton() {
   return $("#btnSubmitAddFile");
 }
 
+function setupAddModalEnterNavigation() {
+  const form = $("#addFileForm");
+  if (!form) return;
+
+  const focusOrder = ["addTitle", "addArtist", "addKey", "addFileInput"];
+  const nextField = (id = "") => {
+    const idx = focusOrder.indexOf(String(id || ""));
+    if (idx < 0 || idx >= focusOrder.length - 1) return null;
+    return document.getElementById(focusOrder[idx + 1]);
+  };
+
+  form.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const id = target.id;
+    if (!focusOrder.includes(id)) return;
+    if (id === "addFileInput") return;
+
+    const next = nextField(id);
+    if (!next) return;
+
+    e.preventDefault();
+    next.focus();
+  });
+}
+
 function resetAddUploadProgress() {
   const wrap = $("#addUploadProgressWrap");
   const text = $("#addUploadProgressText");
@@ -1953,6 +1981,71 @@ function normalizeForMeta(text = "") {
     .trim();
 }
 
+function isImageFile(file) {
+  if (!file) return false;
+  return /^image\//.test(file.type || "") || /\.(jpg|jpeg|png|webp)$/i.test(file.name || "");
+}
+
+function convertImageFileToJpegBytes(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || img.width || 1;
+        canvas.height = img.naturalHeight || img.height || 1;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("canvas context unavailable");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(async (blob) => {
+          URL.revokeObjectURL(url);
+          if (!blob) {
+            reject(new Error("blob 변환 실패"));
+            return;
+          }
+          resolve(new Uint8Array(await blob.arrayBuffer()));
+        }, "image/jpeg", 0.95);
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        reject(err);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("이미지 로드 실패"));
+    };
+    img.src = url;
+  });
+}
+
+async function buildMergedPdfFileFromImages(files = [], nameBase = "merged-images") {
+  if (!window.PDFLib) throw new Error("PDFLib not loaded");
+  const pdfDoc = await PDFLib.PDFDocument.create();
+  for (const file of files) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const lower = String(file.name || "").toLowerCase();
+    const isPng = (file.type || "").includes("png") || lower.endsWith(".png");
+    const isJpg = (file.type || "").includes("jpeg") || lower.endsWith(".jpg") || lower.endsWith(".jpeg");
+
+    let embedded;
+    if (isPng) {
+      embedded = await pdfDoc.embedPng(bytes);
+    } else if (isJpg) {
+      embedded = await pdfDoc.embedJpg(bytes);
+    } else {
+      const jpgBytes = await convertImageFileToJpegBytes(file);
+      embedded = await pdfDoc.embedJpg(jpgBytes);
+    }
+
+    const page = pdfDoc.addPage([embedded.width, embedded.height]);
+    page.drawImage(embedded, { x: 0, y: 0, width: embedded.width, height: embedded.height });
+  }
+  const pdfBytes = await pdfDoc.save();
+  const safeBase = sanitizeFilename(nameBase || "merged-images");
+  return new File([pdfBytes], `${safeBase}.pdf`, { type: "application/pdf" });
+}
+
 async function loadSongsFromSupabase() {
   if (!window.SB?.isConfigured()) return [];
   try {
@@ -2050,12 +2143,10 @@ async function handleAddFileSubmit(e) {
     return;
   }
 
-  const multiple = files.length > 1;
-
-  const addableFiles = [];
+  let addableFiles = [];
   for (const file of files) {
     const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
-    const isImage = /^image\//.test(file.type) || /\.(jpg|jpeg|png|webp)$/i.test(file.name || "");
+    const isImage = isImageFile(file);
     if (!isPdf && !isImage) continue;
     addableFiles.push(file);
   }
@@ -2064,6 +2155,27 @@ async function handleAddFileSubmit(e) {
     alert("PDF 또는 이미지 파일만 추가할 수 있어요.");
     return;
   }
+
+  // 여러 이미지를 한 번에 선택한 경우: 1개의 다중 페이지 PDF로 병합해서 업로드
+  if (addableFiles.length > 1 && addableFiles.every((file) => isImageFile(file))) {
+    if (!window.PDFLib) {
+      alert("이미지 여러 장 업로드를 위해 PDF 라이브러리가 필요합니다.");
+      return;
+    }
+    try {
+      const first = addableFiles[0];
+      const parsed = parseFilenameMeta(first.name);
+      const mergedTitle = title || parsed.title || getBaseName(first.name) || "merged-images";
+      const mergedPdfFile = await buildMergedPdfFileFromImages(addableFiles, mergedTitle);
+      addableFiles = [mergedPdfFile];
+    } catch (err) {
+      console.error(err);
+      alert("이미지 병합 중 오류가 발생했습니다.");
+      return;
+    }
+  }
+
+  const multiple = addableFiles.length > 1;
 
   // 중복 체크(제목/아티스트/키 기준)
   const existingKeySet = new Set(
@@ -3047,6 +3159,7 @@ async function init() {
   $("#addModal").addEventListener("click", (e) => {
     if (e.target?.dataset?.closeAdd) closeAddModal();
   });
+  setupAddModalEnterNavigation();
   $("#addFileForm").addEventListener("submit", handleAddFileSubmit);
   $("#btnAddFile")?.addEventListener("click", openAddModal);
   document.addEventListener("keydown", (e) => {
