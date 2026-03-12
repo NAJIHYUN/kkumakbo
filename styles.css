@@ -2565,6 +2565,8 @@ body[data-share].share-team-middle .page-box.selected .page-canvas{
     white-space:nowrap;
   }
   body[data-songlist] .controls > .btn.home-btn.songlist-vault-btn{
+    width:36px;
+    height:36px;
     min-width:0;
     padding:0 9px;
   }
@@ -3669,6 +3671,16 @@ body[data-share].share-team-middle .page-box.selected .page-canvas{
     border-color:transparent;
   }
   html[data-ui-theme="dark"] body[data-songlist] .songlist-vault-btn:not(.is-active) .songlist-vault-icon{
+    filter:brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(236%) hue-rotate(177deg) brightness(102%) contrast(93%);
+  }
+  html[data-ui-theme="dark"] body[data-songlist] .songlist-search-wrap .input{
+    color:#f2f4f6;
+  }
+  html[data-ui-theme="dark"] body[data-songlist] .songlist-search-wrap .input::placeholder{
+    color:#f2f4f6;
+    opacity:1;
+  }
+  html[data-ui-theme="dark"] body[data-damgi] .package-vault-line .team-option input:not(:checked) + span::before{
     filter:brightness(0) saturate(100%) invert(95%) sepia(10%) saturate(236%) hue-rotate(177deg) brightness(102%) contrast(93%);
   }
   html[data-ui-theme="dark"] body[data-share] #packageVaultBtn.vault-team-middle,
