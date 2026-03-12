@@ -221,6 +221,71 @@ function isTouchMobileDevice() {
   return coarse || mobileUA;
 }
 
+function getKnownArtists() {
+  const seen = new Set();
+  const artists = [];
+  state.songs.forEach((song) => {
+    const value = String(song?.artist || "").trim();
+    if (!value) return;
+    const key = normalizeForMeta(value).toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    artists.push(value);
+  });
+  return artists.sort((a, b) => a.localeCompare(b, "ko"));
+}
+
+function bindArtistAutocomplete(inputSelector, panelSelector) {
+  const input = $(inputSelector);
+  const panel = $(panelSelector);
+  if (!input || !panel) return;
+
+  const hidePanel = () => {
+    panel.classList.add("hidden");
+    panel.innerHTML = "";
+  };
+
+  const renderPanel = () => {
+    const keyword = normalizeForMeta(input.value).toLowerCase();
+    if (!keyword) {
+      hidePanel();
+      return;
+    }
+    const matches = getKnownArtists()
+      .filter((name) => normalizeForMeta(name).toLowerCase().startsWith(keyword))
+      .slice(0, 8);
+    if (!matches.length) {
+      hidePanel();
+      return;
+    }
+
+    panel.innerHTML = "";
+    matches.forEach((name) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "artist-suggest-item";
+      btn.setAttribute("role", "option");
+      btn.textContent = name;
+      btn.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        input.value = name;
+        hidePanel();
+      });
+      panel.appendChild(btn);
+    });
+    panel.classList.remove("hidden");
+  };
+
+  input.addEventListener("input", renderPanel);
+  input.addEventListener("focus", renderPanel);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") hidePanel();
+  });
+  input.addEventListener("blur", () => {
+    setTimeout(hidePanel, 120);
+  });
+}
+
 function syncSortOptionsByViewport() {
   const sort = $("#sort");
   if (!sort) return;
@@ -3159,6 +3224,12 @@ async function init() {
   $("#addModal").addEventListener("click", (e) => {
     if (e.target?.dataset?.closeAdd) closeAddModal();
   });
+  $("#addFileInput")?.addEventListener("change", () => {
+    addPendingFiles = Array.from($("#addFileInput")?.files || []);
+    renderAddFileOrder();
+  });
+  bindArtistAutocomplete("#addArtist", "#addArtistSuggest");
+  bindArtistAutocomplete("#mEditArtist", "#mEditArtistSuggest");
   setupAddModalEnterNavigation();
   $("#addFileForm").addEventListener("submit", handleAddFileSubmit);
   $("#btnAddFile")?.addEventListener("click", openAddModal);

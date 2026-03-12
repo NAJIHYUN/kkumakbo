@@ -173,7 +173,10 @@
             </label>
             <label class="add-label">
               <span>아티스트</span>
-              <input id="mEditArtist" class="input" type="text" />
+              <div class="artist-autocomplete">
+                <input id="mEditArtist" class="input" type="text" autocomplete="off" />
+                <div id="mEditArtistSuggest" class="artist-suggest hidden" role="listbox" aria-label="아티스트 추천"></div>
+              </div>
             </label>
             <label class="add-label">
               <span>Key</span>
@@ -238,7 +241,10 @@
           </label>
           <label class="add-label">
             <span>아티스트</span>
-            <input id="addArtist" class="input" type="text" placeholder="ex. 어노인팅" />
+            <div class="artist-autocomplete">
+              <input id="addArtist" class="input" type="text" placeholder="ex. 어노인팅" autocomplete="off" />
+              <div id="addArtistSuggest" class="artist-suggest hidden" role="listbox" aria-label="아티스트 추천"></div>
+            </div>
           </label>
           <label class="add-label">
             <span>Key</span>
