@@ -133,6 +133,51 @@ function saveUiTheme(theme = "light") {
   } catch {}
 }
 
+function buildAuthPageUrl() {
+  const next = `${location.pathname}${location.search}`;
+  return `./auth.html?next=${encodeURIComponent(next)}`;
+}
+
+function setGuestMode() {
+  const nextUrl = buildAuthPageUrl();
+  const infoForm = document.querySelector(".package-form.myinfo-form");
+  const guestActions = $("#myInfoGuestActions");
+  [
+    "#myInfoLineNickname",
+    "#myInfoLineEmail",
+    "#myInfoLineRole",
+    "#myInfoLinePassword",
+    "#myInfoLinePasswordConfirm",
+    ".myinfo-actions",
+    "#myInfoStatus",
+    "#myInfoPackagesSection",
+  ].forEach((selector) => {
+    document.querySelector(selector)?.classList.add("hidden");
+  });
+  $("#myInfoPageTitle").textContent = "MY";
+  $("#myInfoPackagesTitle").textContent = "나의 콘티";
+  document.title = "MY";
+  infoForm?.classList.add("hidden");
+  guestActions?.classList.remove("hidden");
+
+  $("#btnMyInfoGuestLogin")?.addEventListener("click", () => {
+    location.href = nextUrl;
+  });
+  $("#btnMyInfoGuestSignup")?.addEventListener("click", () => {
+    location.href = `${nextUrl}&mode=signup`;
+  });
+
+  const searchInput = $("#myPackagesSearch");
+  const clearBtn = $("#btnClearMyPackagesSearch");
+  if (searchInput) {
+    searchInput.value = "";
+    searchInput.disabled = true;
+    searchInput.placeholder = "로그인 후 검색할 수 있습니다.";
+  }
+  clearBtn?.classList.add("hidden");
+  setMyInfoStatus("");
+}
+
 async function loadMyPackages() {
   const loadLocal = (vault = "all") => {
     try {
@@ -282,15 +327,27 @@ async function renderPackages(query = "") {
 }
 
 async function init() {
-  if (!window.SB?.isConfigured()) return;
+  applyUiTheme(getStoredTheme());
+  $("#btnThemeToggle")?.addEventListener("click", () => {
+    const nextTheme = document.documentElement.dataset.uiTheme === "dark" ? "light" : "dark";
+    applyUiTheme(nextTheme);
+    saveUiTheme(nextTheme);
+  });
+
+  if (!window.SB?.isConfigured()) {
+    setGuestMode();
+    return;
+  }
   const client = window.SB.getClient();
-  if (!client) return;
+  if (!client) {
+    setGuestMode();
+    return;
+  }
 
   const { data } = await client.auth.getSession();
   const session = data?.session || null;
   if (!session) {
-    const next = `${location.pathname}${location.search}`;
-    location.replace(`./auth.html?next=${encodeURIComponent(next)}`);
+    setGuestMode();
     return;
   }
 
@@ -308,7 +365,6 @@ async function init() {
   document.title = pageTitle;
   $("#myInfoNickname").textContent = nickname;
   $("#myInfoEmail").textContent = email;
-  applyUiTheme(getStoredTheme());
 
   try {
     const { data: profile } = await client
@@ -364,13 +420,7 @@ async function init() {
     try {
       await client.auth.signOut();
     } catch {}
-    location.replace("./auth.html");
-  });
-
-  $("#btnThemeToggle")?.addEventListener("click", () => {
-    const nextTheme = document.documentElement.dataset.uiTheme === "dark" ? "light" : "dark";
-    applyUiTheme(nextTheme);
-    saveUiTheme(nextTheme);
+    location.replace("./my-info.html");
   });
 
   const searchInput = $("#myPackagesSearch");

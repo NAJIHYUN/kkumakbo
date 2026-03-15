@@ -10,6 +10,12 @@ function nextPath() {
   return n;
 }
 
+function requestedMode() {
+  const url = new URL(location.href);
+  const mode = String(url.searchParams.get("mode") || "").trim().toLowerCase();
+  return mode === "signup" ? "signup" : mode === "signin" ? "signin" : "";
+}
+
 function getAuthRedirectUrl() {
   return new URL("./auth.html", location.href).toString();
 }
@@ -452,6 +458,13 @@ async function initAuth() {
     }
     enterLoginMode();
   });
+
+  const initialMode = requestedMode();
+  if (initialMode === "signup") {
+    enterSignUpMode();
+  } else if (initialMode === "signin") {
+    enterLoginMode();
+  }
 
   btnSubmitIn?.addEventListener("click", () => withPending(async () => {
     const email = String(emailInput?.value || "").trim();

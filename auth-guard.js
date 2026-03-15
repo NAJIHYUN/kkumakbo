@@ -12,7 +12,16 @@
 
   function redirectToAuth() {
     const next = `${location.pathname}${location.search}`;
-    location.replace(`./auth.html?next=${encodeURIComponent(next)}`);
+    location.replace(`./my-info.html?next=${encodeURIComponent(next)}`);
+  }
+
+  function getLoginRequiredMessage() {
+    const path = currentPath();
+    if (path.endsWith("/favorite.html")) return "찜 기능은 로그인 후 사용할 수 있습니다.";
+    if (path.endsWith("/damgi.html")) return "콘티 생성은 로그인 후 사용할 수 있습니다.";
+    if (path.endsWith("/my-info.html")) return "로그인 후 나의 정보를 확인할 수 있습니다.";
+    if (path.endsWith("/my-packages.html")) return "로그인 후 내 콘티를 확인할 수 있습니다.";
+    return "로그인이 필요합니다.";
   }
 
   async function getProfile(client, userId) {
@@ -54,6 +63,7 @@
     const { data } = await client.auth.getSession();
     const session = data?.session || null;
     if (!session) {
+      alert(getLoginRequiredMessage());
       redirectToAuth();
       return;
     }

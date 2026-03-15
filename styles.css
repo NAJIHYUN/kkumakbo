@@ -876,7 +876,7 @@ th.col-title{text-align:center}
 .chip button[data-action="remove"]{color:#d32f2f}
 .chip button[data-action="remove"]:hover{color:#b71c1c}
 
-.hidden{display:none}
+.hidden{display:none !important}
 
 /* Modal */
 .modal{position:fixed;inset:0;z-index:220}
@@ -1166,6 +1166,25 @@ th.col-title{text-align:center}
   border:none;
   border-radius:0;
   overflow:visible;
+}
+.myinfo-guest-actions{
+  display:grid;
+  gap:18px;
+  padding:20px 0 8px;
+  justify-items:center;
+}
+.myinfo-guest-copy{
+  margin:0;
+  font-size:15px;
+  color:#666;
+  text-align:center;
+  line-height:1.5;
+}
+.myinfo-guest-buttons{
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  flex-wrap:wrap;
 }
 .package-modal-card .modal-foot{
   border-top:none;

@@ -14,7 +14,6 @@
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="./supabase-config.js"></script>
   <script defer src="./supabase-client.js"></script>
-  <script defer src="./auth-guard.js"></script>
   <script defer src="./my-info.js"></script>
 </head>
 <body data-my-info="1">
@@ -30,23 +29,23 @@
   <main class="container">
     <section class="myinfo-page-card">
       <div class="package-form myinfo-form">
-        <div class="package-name-line">
+        <div id="myInfoLineNickname" class="package-name-line">
           <span>닉네임</span>
           <strong id="myInfoNickname" class="myinfo-value">-</strong>
         </div>
-        <div class="package-name-line">
+        <div id="myInfoLineEmail" class="package-name-line">
           <span>이메일</span>
           <strong id="myInfoEmail" class="myinfo-value">-</strong>
         </div>
-        <div class="package-name-line">
+        <div id="myInfoLineRole" class="package-name-line">
           <span>권한</span>
           <strong id="myInfoRole" class="myinfo-value">-</strong>
         </div>
-        <label class="package-name-line" for="myInfoNewPassword">
+        <label id="myInfoLinePassword" class="package-name-line" for="myInfoNewPassword">
           <span>새 비밀번호</span>
           <input id="myInfoNewPassword" class="input package-name-input" type="password" placeholder="5~15자 (영문/숫자/!@#)" />
         </label>
-        <label class="package-name-line" for="myInfoNewPasswordConfirm">
+        <label id="myInfoLinePasswordConfirm" class="package-name-line" for="myInfoNewPasswordConfirm">
           <span>비밀번호 확인</span>
           <input id="myInfoNewPasswordConfirm" class="input package-name-input" type="password" placeholder="비밀번호 확인" />
         </label>
@@ -62,8 +61,15 @@
         </div>
         <div id="myInfoStatus" class="myinfo-status"></div>
       </div>
+      <div id="myInfoGuestActions" class="myinfo-guest-actions hidden">
+        <p class="myinfo-guest-copy">찜하기, 콘티 생성, 악보 추가는 로그인 후 사용할 수 있습니다.</p>
+        <div class="myinfo-guest-buttons">
+          <button id="btnMyInfoGuestLogin" class="btn primary" type="button">로그인</button>
+          <button id="btnMyInfoGuestSignup" class="btn" type="button">회원가입</button>
+        </div>
+      </div>
     </section>
-    <section class="myinfo-packages-section">
+    <section id="myInfoPackagesSection" class="myinfo-packages-section">
       <strong id="myInfoPackagesTitle" class="myinfo-packages-title">나의 콘티</strong>
       <div class="vault-search-wrap">
         <input id="myPackagesSearch" class="input" type="text" placeholder="검색 (예: 콘티명 / 초성)" />

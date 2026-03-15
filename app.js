@@ -19,6 +19,7 @@ const SB_SONGS_TABLE = "songs";
 const SB_FILES_BUCKET = "score-files";
 const FAVORITES_STORAGE_KEY = "scorebox_favorite_song_ids";
 const DAMGI_STORAGE_KEY = "scorebox_damgi_items";
+const LOGIN_REQUIRED_MESSAGE = "이 기능은 로그인 후 사용할 수 있습니다.";
 
 let previewSession = 0;
 let previewDoc = null;
@@ -74,6 +75,31 @@ function loadFavoriteIds() {
   } catch {
     return new Set();
   }
+}
+
+function buildAuthRedirectUrl() {
+  const next = `${location.pathname}${location.search}`;
+  return `./my-info.html?next=${encodeURIComponent(next)}`;
+}
+
+async function getSessionUser() {
+  if (!window.SB?.isConfigured()) return null;
+  try {
+    const client = window.SB.getClient();
+    if (!client) return null;
+    const { data } = await client.auth.getSession();
+    return data?.session?.user || null;
+  } catch {
+    return null;
+  }
+}
+
+async function requireLoggedInAction(message = LOGIN_REQUIRED_MESSAGE) {
+  const user = await getSessionUser();
+  if (user) return user;
+  alert(message);
+  location.href = buildAuthRedirectUrl();
+  return null;
 }
 
 function saveFavoriteIds() {
@@ -460,7 +486,9 @@ function render() {
       </svg>
     `;
     favBtn.disabled = rowActionDisabled;
-    favBtn.addEventListener("click", () => {
+    favBtn.addEventListener("click", async () => {
+      const user = await requireLoggedInAction("찜하기는 로그인 후 사용할 수 있습니다.");
+      if (!user) return;
       toggleFavoriteSong(song.id);
     });
     tdFav.appendChild(favBtn);
@@ -2119,7 +2147,6 @@ async function loadSongsFromSupabase() {
 
     const { data } = await client.auth.getSession();
     const sessionUserId = data?.session?.user?.id || "";
-    if (!sessionUserId) return [];
     const sessionNickname = String(
       data?.session?.user?.user_metadata?.nickname ||
       data?.session?.user?.email?.split("@")[0] ||
@@ -3100,6 +3127,8 @@ async function init() {
 
   $("#btnShareSelected").addEventListener("click", async () => {
     if (!state.selectMode || state.selectedIds.length === 0) return;
+    const user = await requireLoggedInAction("콘티 생성은 로그인 후 사용할 수 있습니다.");
+    if (!user) return;
     const addedCount = addSelectedSongsToDamgi();
     if (!addedCount) return;
     location.href = "./damgi.html";
@@ -3107,6 +3136,8 @@ async function init() {
 
   $("#btnMergeSelected").addEventListener("click", async () => {
     if (isMobileViewport()) {
+      const user = await requireLoggedInAction("악보 추가는 로그인 후 사용할 수 있습니다.");
+      if (!user) return;
       openAddModal();
       return;
     }
@@ -3182,11 +3213,13 @@ async function init() {
   $("#mDownloadPage").addEventListener("click", () => {
     togglePreviewPageSelectMode();
   });
-  $("#mEditSong").addEventListener("click", () => {
+  $("#mEditSong").addEventListener("click", async () => {
     if (!previewSong) return;
     if (previewEditMode) {
       exitPreviewEditMode();
     } else {
+      const user = await requireLoggedInAction("악보 수정은 로그인 후 사용할 수 있습니다.");
+      if (!user) return;
       enterPreviewEditMode();
     }
   });

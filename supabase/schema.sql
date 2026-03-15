@@ -96,9 +96,9 @@ create table if not exists public.songs (
 alter table public.songs enable row level security;
 
 drop policy if exists "songs_select_all_auth" on public.songs;
-create policy "songs_select_all_auth"
+drop policy if exists "songs_select_all_public" on public.songs;
+create policy "songs_select_all_public"
 on public.songs for select
-to authenticated
 using (true);
 
 drop policy if exists "songs_insert_own" on public.songs;
