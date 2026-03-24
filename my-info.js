@@ -55,16 +55,17 @@ function validateMyInfoPassword(password = "") {
   return "";
 }
 
-function matchesPackagesQuery(item, query) {
+function matchesSongsQuery(item, query) {
   const q = normalize(query);
   if (!q) return true;
-  const name = normalize(item?.name || "");
-  const vault = normalize(item?.vaultLabel || "");
-  const merged = `${name} ${vault}`;
+  const title = normalize(item?.title || "");
+  const artist = normalize(item?.artist || "");
+  const key = normalize(item?.key || "");
+  const merged = `${title} ${artist} ${key}`.trim();
   if (/[ㄱ-ㅎ]/.test(q)) {
-    return `${getChosung(name)}${getChosung(vault)}`.includes(q.replace(/\s+/g, ""));
+    return `${getChosung(title)}${getChosung(artist)}`.includes(q.replace(/\s+/g, ""));
   }
-  return name.includes(q) || vault.includes(q) || merged.includes(q);
+  return title.includes(q) || artist.includes(q) || key.includes(q) || merged.includes(q);
 }
 
 function getVaultLabel(vault = "") {
@@ -165,7 +166,7 @@ function setGuestMode() {
     document.querySelector(selector)?.classList.add("hidden");
   });
   $("#myInfoPageTitle").textContent = "MY";
-  $("#myInfoPackagesTitle").textContent = "나의 콘티";
+  $("#myInfoPackagesTitle").textContent = "나의 악보";
   document.title = "MY";
   infoForm?.classList.add("hidden");
   guestActions?.classList.remove("hidden");
@@ -188,91 +189,54 @@ function setGuestMode() {
   setMyInfoStatus("");
 }
 
-async function loadMyPackages() {
-  const loadLocal = (vault = "all") => {
-    try {
-      const raw = JSON.parse(localStorage.getItem(`scorebox_vault_${vault}`) || "[]");
-      if (!Array.isArray(raw)) return [];
-      return raw.map((item, idx) => ({
-        id: `local-${vault}-${idx}-${String(item?.createdAt || "")}`,
-        name: item?.name || "이름 없는 콘티",
-        url: item?.url || "",
-        vault,
-        vaultLabel: getVaultLabel(vault),
-        createdAt: item?.createdAt || new Date().toISOString(),
-      }));
-    } catch {
-      return [];
-    }
-  };
-  const localItems = [...loadLocal("high"), ...loadLocal("middle"), ...loadLocal("all")];
-
+async function loadMySongs(userId = "") {
   const client = window.SB?.getClient?.();
-  if (!client) return localItems;
-  const { data, error } = await client
-    .from("packages")
-    .select("id, name, url, vault, created_at")
-    .order("created_at", { ascending: false });
-  if (error || !Array.isArray(data)) return localItems;
-  const remoteItems = data.map((row) => ({
-    id: row.id,
-    name: row.name || "이름 없는 콘티",
-    url: row.url || "",
-    vault: row.vault || "all",
-    vaultLabel: getVaultLabel(row.vault),
-    createdAt: row.created_at,
-  }));
-  const keyOf = (x) => `${x.vault}|${x.name}|${x.url}`;
-  const seen = new Set(remoteItems.map(keyOf));
-  const merged = [...remoteItems];
-  localItems.forEach((item) => {
-    const key = keyOf(item);
-    if (seen.has(key)) return;
-    seen.add(key);
-    merged.push(item);
-  });
-  return merged;
-}
-
-async function deletePackage(id) {
-  const client = window.SB?.getClient?.();
-  if (!client || !id) return false;
-  const { error } = await client.from("packages").delete().eq("id", id);
-  return !error;
-}
-
-async function shareLink(url, name = "콘티") {
-  const payload = {
-    title: `콘티: ${name}`,
-    text: `${name} 콘티 링크입니다.`,
-    url,
-  };
-  if (navigator.share) {
-    try {
-      await navigator.share(payload);
-      return;
-    } catch (err) {
-      if (err?.name === "AbortError") return;
-    }
-  }
+  if (!client || !userId) return [];
   try {
-    await navigator.clipboard.writeText(url);
-    alert("링크를 복사했어요.");
-  } catch {
-    prompt("복사해서 사용하세요:", url);
+    let data;
+    let error;
+    ({ data, error } = await client
+      .from("songs")
+      .select("id, title, artist, key, pdf_url, jpg_url, created_at, owner_id, uploader_nickname")
+      .eq("owner_id", userId)
+      .order("created_at", { ascending: false }));
+    if (error) {
+      ({ data, error } = await client
+        .from("songs")
+        .select("id, title, artist, key, pdf_url, jpg_url, created_at, owner_id")
+        .eq("owner_id", userId)
+        .order("created_at", { ascending: false }));
+    }
+    if (error || !Array.isArray(data)) return [];
+    return data.map((row) => ({
+      id: row.id,
+      title: row.title || "이름 없는 악보",
+      artist: row.artist || "",
+      key: row.key || "",
+      pdfUrl: row.pdf_url || "",
+      jpgUrl: row.jpg_url || "",
+      createdAt: row.created_at || new Date().toISOString(),
+    }));
+  } catch (err) {
+    console.error("my songs 로드 오류:", err);
+    return [];
   }
 }
 
-async function renderPackages(query = "") {
+function getSongOpenUrl(item) {
+  return String(item?.pdfUrl || item?.jpgUrl || "").trim();
+}
+
+async function renderSongs(userId, query = "") {
   const list = $("#myPackagesList");
   if (!list) return;
-  const items = (await loadMyPackages()).filter((item) => matchesPackagesQuery(item, query));
+  const items = (await loadMySongs(userId)).filter((item) => matchesSongsQuery(item, query));
 
   list.innerHTML = "";
   if (!items.length) {
     const empty = document.createElement("div");
     empty.className = "vault-empty";
-    empty.textContent = "생성한 콘티가 없습니다.";
+    empty.textContent = "업로드한 악보가 없습니다.";
     list.appendChild(empty);
     return;
   }
@@ -287,15 +251,17 @@ async function renderPackages(query = "") {
     const name = document.createElement("div");
     name.className = "vault-item-name";
 
-    const packageNameEl = document.createElement("span");
-    packageNameEl.className = "vault-package-name";
-    packageNameEl.textContent = item.name;
+    const songTitleEl = document.createElement("span");
+    songTitleEl.className = "vault-package-name";
+    songTitleEl.textContent = item.title;
 
-    const vaultEl = document.createElement("span");
-    vaultEl.className = `vault-item-nickname vault-label-${normalizeVaultKey(item.vault)}`;
-    vaultEl.textContent = item.vaultLabel;
+    const artistEl = document.createElement("span");
+    artistEl.className = "vault-item-nickname vault-label-all";
+    const artistText = item.artist || "-";
+    const keyText = item.key ? `${item.key}키` : "-";
+    artistEl.textContent = `${artistText}ㆍ${keyText}`;
 
-    name.append(packageNameEl, vaultEl);
+    name.append(songTitleEl, artistEl);
 
     const date = document.createElement("div");
     date.className = "vault-item-date";
@@ -305,32 +271,17 @@ async function renderPackages(query = "") {
     const actions = document.createElement("div");
     actions.className = "vault-item-actions";
 
+    const openUrl = getSongOpenUrl(item);
     const openBtn = document.createElement("button");
     openBtn.className = "btn vault-btn-open";
     openBtn.textContent = "열기";
-    openBtn.addEventListener("click", () => window.open(item.url, "_blank"));
-
-    const shareBtn = document.createElement("button");
-    shareBtn.className = "btn vault-btn-share";
-    shareBtn.textContent = "공유";
-    shareBtn.addEventListener("click", async () => {
-      await shareLink(item.url, item.name);
+    openBtn.disabled = !openUrl;
+    openBtn.addEventListener("click", () => {
+      if (!openUrl) return;
+      window.open(openUrl, "_blank");
     });
 
-    const delBtn = document.createElement("button");
-    delBtn.className = "btn vault-btn-delete";
-    delBtn.textContent = "삭제";
-    delBtn.addEventListener("click", async () => {
-      if (!confirm(`${item.name}를 삭제할까요? 삭제된 콘티는 복구가 불가합니다.`)) return;
-      const ok = await deletePackage(item.id);
-      if (!ok) {
-        alert("삭제에 실패했어요.");
-        return;
-      }
-      await renderPackages($("#myPackagesSearch")?.value || "");
-    });
-
-    actions.append(openBtn, shareBtn, delBtn);
+    actions.append(openBtn);
     row.append(meta, actions);
     list.appendChild(row);
   });
@@ -367,8 +318,9 @@ async function init() {
     "-"
   );
   const email = String(session.user?.email || "-");
+  const userId = String(session.user?.id || "");
   const pageTitle = nickname && nickname !== "-" ? `${nickname}님의 정보` : "나의 정보";
-  const packagesTitle = nickname && nickname !== "-" ? `${nickname}님의 콘티` : "나의 콘티";
+  const packagesTitle = nickname && nickname !== "-" ? `${nickname}님의 악보` : "나의 악보";
 
   $("#myInfoPageTitle").textContent = pageTitle;
   $("#myInfoPackagesTitle").textContent = packagesTitle;
@@ -442,18 +394,18 @@ async function init() {
 
   searchInput?.addEventListener("input", async () => {
     syncClear();
-    await renderPackages(searchInput.value || "");
+    await renderSongs(userId, searchInput.value || "");
   });
   clearBtn?.addEventListener("click", async () => {
     if (!searchInput) return;
     searchInput.value = "";
     syncClear();
     searchInput.focus();
-    await renderPackages("");
+    await renderSongs(userId, "");
   });
 
   syncClear();
-  await renderPackages("");
+  await renderSongs(userId, "");
 }
 
 init().catch((err) => {

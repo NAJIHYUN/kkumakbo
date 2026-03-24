@@ -2736,20 +2736,12 @@ function buildShareLinkFromSelected(pkgMeta = {}) {
     }
   }
   const pkg = String(pkgMeta.pkgName || "").trim();
-  const team = String(pkgMeta.team || "").trim();
   const memo = String(pkgMeta.memo || "").trim();
   const by = String(state.myNickname || "").trim();
   if (pkg) params.set("pkg", pkg);
-  if (team) params.set("team", team);
   if (memo) params.set("memo", memo);
   if (by) params.set("by", by);
   return `${location.origin}${location.pathname.replace(/index\.html?$/,"").replace(/\/$/,"/")}share.html?${params.toString()}`;
-}
-
-function mapTeamToVault(team = "") {
-  if (team === "high") return "high";
-  if (team === "middle") return "middle";
-  return "all";
 }
 
 async function getCurrentUserNickname() {
@@ -2769,16 +2761,6 @@ async function getCurrentUserNickname() {
   } catch {
     return "";
   }
-}
-
-function canCreateVaultByRole(role = "all", vault = "all") {
-  const r = String(role || "all").toLowerCase();
-  const v = String(vault || "all").toLowerCase();
-  if (r === "admin") return true;
-  if (v === "all") return true;
-  if (v === "high") return r === "high";
-  if (v === "middle") return r === "middle";
-  return false;
 }
 
 async function initMyInfoModal() {
@@ -2803,19 +2785,8 @@ async function initMyInfoModal() {
 }
 
 async function savePackageToVault(pkgMeta, link) {
-  const vault = mapTeamToVault(pkgMeta?.team || "");
-  if (!canCreateVaultByRole(state.myRole, vault)) {
-    alert("해당 보관함에 콘티를 생성할 권한이 없습니다.");
-    return false;
-  }
   const safeName = String(pkgMeta?.pkgName || "").trim() || "이름 없는 콘티";
-  const item = {
-    name: safeName,
-    url: link,
-    createdAt: new Date().toISOString(),
-  };
 
-  // Supabase configured: persist to DB first
   if (window.SB?.isConfigured()) {
     try {
       const client = window.SB.getClient();
@@ -2825,34 +2796,23 @@ async function savePackageToVault(pkgMeta, link) {
         if (userId) {
           const { error } = await client.from("packages").insert({
             owner_id: userId,
-            vault,
-            name: item.name,
-            url: item.url,
+            vault: "all",
+            name: safeName,
+            url: link,
           });
           if (!error) return true;
-          console.error("Supabase 보관함 저장 실패:", error);
-          alert("콘티 저장 권한이 없거나 저장에 실패했습니다.");
+          console.error("Supabase 콘티 저장 실패:", error);
+          alert("콘티 저장에 실패했습니다.");
           return false;
         }
       }
     } catch (err) {
-      console.error("Supabase 보관함 저장 오류:", err);
+      console.error("Supabase 콘티 저장 오류:", err);
       alert("콘티 저장 중 오류가 발생했습니다.");
       return false;
     }
   }
-
-  // Fallback: localStorage
-  const key = `scorebox_vault_${vault}`;
-  try {
-    const prev = JSON.parse(localStorage.getItem(key) || "[]");
-    prev.unshift(item);
-    localStorage.setItem(key, JSON.stringify(prev));
-    return true;
-  } catch (err) {
-    console.error("보관함 저장 실패:", err);
-    return false;
-  }
+  return false;
 }
 
 function openPackageCreateDialog() {
@@ -2862,27 +2822,12 @@ function openPackageCreateDialog() {
   const memoInput = $("#packageMemoInput");
   const closeBtn = $("#btnClosePackageModal");
   const submitBtn = $("#btnSubmitPackage");
-  const teamInputs = Array.from(form?.querySelectorAll("input[name='packageTeam']") || []);
-  if (!modal || !form || !input) return Promise.resolve({ pkgName: "", team: "high" });
+  if (!modal || !form || !input) return Promise.resolve({ pkgName: "" });
 
   return new Promise((resolve) => {
-    const applyRoleRestrictions = () => {
-      teamInputs.forEach((input) => {
-        const vault = mapTeamToVault(input.value);
-        const allowed = canCreateVaultByRole(state.myRole, vault);
-        input.disabled = !allowed;
-        const label = input.closest(".team-option");
-        if (label) label.classList.toggle("is-disabled", !allowed);
-      });
-      const checked = form.querySelector("input[name='packageTeam']:checked");
-      if (checked && checked.disabled) checked.checked = false;
-    };
-
     const updateSubmitState = () => {
       const hasPkgName = input.value.trim().length > 0;
-      const selected = form.querySelector("input[name='packageTeam']:checked");
-      const hasTeam = !!selected && !selected.disabled;
-      if (submitBtn) submitBtn.disabled = !(hasPkgName && hasTeam);
+      if (submitBtn) submitBtn.disabled = !hasPkgName;
     };
 
     const closeWith = (value) => {
@@ -2892,30 +2837,21 @@ function openPackageCreateDialog() {
       modal.removeEventListener("click", onBackdrop);
       input.removeEventListener("input", onChange);
       memoInput?.removeEventListener("input", onChange);
-      teamInputs.forEach((el) => el.removeEventListener("change", onChange));
       resolve(value);
     };
 
     const onSubmit = (e) => {
       e.preventDefault();
       const pkgName = input.value.trim();
-      const team = form.querySelector("input[name='packageTeam']:checked")?.value || "";
       if (!pkgName) {
         input.setCustomValidity("콘티 이름은 필수입니다.");
         input.reportValidity();
         input.focus();
         return;
       }
-      if (!team) return;
-      const vault = mapTeamToVault(team);
-      if (!canCreateVaultByRole(state.myRole, vault)) {
-        alert("해당 보관함에 콘티를 생성할 권한이 없습니다.");
-        return;
-      }
       input.setCustomValidity("");
       closeWith({
         pkgName,
-        team,
         memo: memoInput?.value.trim() || "",
       });
     };
@@ -2934,10 +2870,6 @@ function openPackageCreateDialog() {
     input.value = "";
     input.setCustomValidity("");
     if (memoInput) memoInput.value = "";
-    teamInputs.forEach((el) => {
-      el.checked = false;
-    });
-    applyRoleRestrictions();
     updateSubmitState();
     modal.classList.remove("hidden");
     input.focus();
@@ -2945,7 +2877,6 @@ function openPackageCreateDialog() {
     form.addEventListener("submit", onSubmit);
     input.addEventListener("input", onChange);
     memoInput?.addEventListener("input", onChange);
-    teamInputs.forEach((el) => el.addEventListener("change", onChange));
     closeBtn?.addEventListener("click", onCancel);
     modal.addEventListener("click", onBackdrop);
   });
@@ -3084,7 +3015,7 @@ async function init() {
 
   $("#btnShareSelected").addEventListener("click", async () => {
     if (!state.selectMode || state.selectedIds.length === 0) return;
-    const user = await requireLoggedInAction("콘티 생성은 로그인 후 사용할 수 있습니다.");
+    const user = await requireLoggedInAction("병합 후 공유는 로그인 후 사용할 수 있습니다.");
     if (!user) return;
     const pkgMeta = await openPackageCreateDialog();
     if (!pkgMeta) return;
@@ -3311,12 +3242,3 @@ window.addEventListener('DOMContentLoaded', () => {
     title: document.title,
   });
 });
-
-// 3. (선택) 버튼 클릭도 추적하고 싶다면?
-// 예: 고등부 버튼 클릭 시
-const highSchoolBtn = document.querySelector('a[href="./vault-dreamhigh.html"]');
-if (highSchoolBtn) {
-  highSchoolBtn.addEventListener("click", () => {
-    trackEvent("button_click", { target: "고등부" });
-  });
-}

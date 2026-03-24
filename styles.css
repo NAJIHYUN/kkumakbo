@@ -2398,7 +2398,7 @@ body[data-share].share-team-middle .page-box.selected .page-canvas{
     bottom:0;
     z-index:140;
     display:grid;
-    grid-template-columns:repeat(5, minmax(0, 1fr));
+    grid-template-columns:repeat(4, minmax(0, 1fr));
     gap:0;
     padding:8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
     background:rgba(255,255,255,.98);

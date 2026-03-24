@@ -17,7 +17,6 @@
 ## 프로젝트 구조
 - `index.html` / `app.js`: 메인 악보 목록
 - `share.html` / `share.js`: 공유 패키지 페이지
-- `vault-*.html` / `vault.js`: 보관함 페이지
 - `auth.html` / `auth.js`: 로그인/회원가입
 - `songs.json`: 악보 메타데이터
 - `files/`: 실제 악보 파일(PDF/JPG)

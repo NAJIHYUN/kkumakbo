@@ -37,18 +37,13 @@
           <a class="link hidden" href="./share.html" title="공유 링크 열기(선택됨 없으면 비어있음)">공유페이지</a>
         </div>
       </div>
-    <div class="brand-social">
-      <a class="sub-btn" href="./vault-dreamhigh.html">☁️ 고등부</a>
-      <a class="sub-btn" href="./vault-middle.html">😎 중등부</a>
-      <a class="sub-btn" href="./vault-all.html">📂 기타</a>
-    </div>
   </header>
 
   <main class="container">
     <section class="controls">
       <button id="btnSelectMode" class="btn home-btn">선택</button>
       <button id="btnClearSelected" class="btn home-btn hidden" type="button">선택 초기화</button>
-      <button id="btnShareSelected" class="btn home-btn primary" disabled>콘티 생성</button>
+      <button id="btnShareSelected" class="btn home-btn primary" disabled>병합 후 공유</button>
       <div class="search-wrap">
         <input id="q" class="input" type="text" placeholder="악보 검색" />
         <button id="btnClearSearch" class="search-clear hidden" type="button" aria-label="검색어 지우기">×</button>
@@ -282,8 +277,8 @@
     <div class="modal-card package-modal-card">
       <div class="modal-head">
         <div>
-          <div class="m-title">콘티 생성</div>
-          <div class="m-meta">팀을 선택하고 공유 콘티를 생성합니다.</div>
+          <div class="m-title">병합 후 공유</div>
+          <div class="m-meta">공유용 악보 묶음을 생성합니다.</div>
         </div>
         <button id="btnClosePackageModal" class="btn" type="button">닫기</button>
       </div>
@@ -292,23 +287,6 @@
           <span>콘티 이름</span>
           <input id="packageNameInput" class="input package-name-input" type="text" placeholder="예: 260222 하오리 콘티" required />
         </label>
-        <div class="add-label package-vault-line">
-          <span>보관함</span>
-          <div class="team-toggle" role="radiogroup" aria-label="콘티 대상">
-            <label class="team-option">
-              <input type="radio" name="packageTeam" value="high" />
-              <span>고등부</span>
-            </label>
-            <label class="team-option">
-              <input type="radio" name="packageTeam" value="middle" />
-              <span>중등부</span>
-            </label>
-            <label class="team-option">
-              <input type="radio" name="packageTeam" value="etc" />
-              <span>기타</span>
-            </label>
-          </div>
-        </div>
         <label class="add-label package-note-line">
           <span>메모</span>
           <textarea id="packageMemoInput" class="input package-name-input package-note-input" rows="4"></textarea>

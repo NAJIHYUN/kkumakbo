@@ -62,13 +62,6 @@ function updateDownloadPickedUI() {
   btn.classList.toggle("hidden", !shouldShow);
 }
 
-function getVaultMetaFromTeam(team = "") {
-  const value = String(team || "").trim().toLowerCase();
-  if (value === "high") return { href: "./vault-dreamhigh.html", label: "고등부" };
-  if (value === "middle") return { href: "./vault-middle.html", label: "중등부" };
-  return { href: "./vault-all.html", label: "기타" };
-}
-
 function decodeShareSongsPayload(encoded = "") {
   const text = String(encoded || "").trim();
   if (!text) return [];
@@ -208,18 +201,10 @@ async function init() {
   const ids = (url.searchParams.get("ids") || "").split(",").map(s => s.trim()).filter(Boolean);
   const payloadSongs = decodeShareSongsPayload(url.searchParams.get("data") || "");
   const packageName = (url.searchParams.get("pkg") || "").trim();
-  const packageTeam = (url.searchParams.get("team") || "").trim();
   const packageBy = (url.searchParams.get("by") || "").trim();
   const packageMemo = (url.searchParams.get("memo") || "").trim();
   const hasRealPackageBy = !!packageBy && packageBy !== "닉네임";
   await setupShareTopActions();
-  const teamClass = packageTeam === "high"
-    ? "share-team-high"
-    : packageTeam === "middle"
-      ? "share-team-middle"
-      : "share-team-all";
-  document.body.classList.remove("share-team-high", "share-team-middle", "share-team-all");
-  document.body.classList.add(teamClass);
 
   const songsJson = await loadSongsJsonSafe();
   const songsRemote = await loadSongsFromSupabaseByIds(ids);
@@ -235,16 +220,6 @@ async function init() {
   }
   picked = picked.filter((song) => !Array.isArray(song.includedPages) || song.includedPages.length > 0);
 
-  const packageVaultBtn = $("#packageVaultBtn");
-  if (packageVaultBtn) {
-    const vaultMeta = getVaultMetaFromTeam(packageTeam);
-    packageVaultBtn.href = vaultMeta.href;
-    packageVaultBtn.textContent = vaultMeta.label;
-    packageVaultBtn.classList.remove("vault-team-high", "vault-team-middle", "vault-team-all");
-    if (packageTeam === "high") packageVaultBtn.classList.add("vault-team-high");
-    else if (packageTeam === "middle") packageVaultBtn.classList.add("vault-team-middle");
-    else packageVaultBtn.classList.add("vault-team-all");
-  }
   if (packageName) {
     document.title = `${packageName} - 선택 공유`;
     const packageTitle = $("#packageTitle");
