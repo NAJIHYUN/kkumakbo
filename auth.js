@@ -51,12 +51,6 @@ function validatePassword(password = "") {
   return "";
 }
 
-function validateRole(role = "") {
-  const value = String(role || "").trim().toLowerCase();
-  if (!["high", "middle", "all"].includes(value)) return "그룹을 선택해 주세요.";
-  return "";
-}
-
 function setupContactAdmin() {
   const btn = $("#btnContactAdmin");
   const messageEl = $("#contactMessage");
@@ -85,7 +79,6 @@ function setupContactAdmin() {
     try {
       const nickname = String($("#authNickname")?.value || "").trim();
       const email = String($("#authEmail")?.value || "").trim();
-      const role = String($("#authRole")?.value || "").trim().toLowerCase();
       const mode = !$("#btnSubmitSignUp")?.classList.contains("hidden")
         ? "signup"
         : !$("#btnSubmitSignIn")?.classList.contains("hidden")
@@ -96,7 +89,7 @@ function setupContactAdmin() {
         message,
         nickname: nickname || null,
         email: email || null,
-        role: role || null,
+        role: null,
         mode,
         source: "auth",
       };
@@ -282,14 +275,12 @@ async function initAuth() {
   const nicknameInput = $("#authNickname");
   const pwInput = $("#authPassword");
   const pwConfirmInput = $("#authPasswordConfirm");
-  const roleInput = $("#authRole");
   const authFields = $("#authFields");
   const authSub = $("#authSub");
   const lineNickname = $("#lineNickname");
   const lineEmail = $("#lineEmail");
   const linePassword = $("#linePassword");
   const linePwConfirm = $("#linePasswordConfirm");
-  const lineRole = $("#lineRole");
   const emailLabel = lineEmail?.querySelector("span");
   const btnEnterIn = $("#btnEnterSignIn");
   const btnEnterUp = $("#btnEnterSignUp");
@@ -396,7 +387,6 @@ async function initAuth() {
     lineNickname?.classList.add("hidden");
     linePassword?.classList.remove("hidden");
     linePwConfirm?.classList.add("hidden");
-    lineRole?.classList.add("hidden");
     btnSubmitIn?.classList.remove("hidden");
     btnSubmitUp?.classList.add("hidden");
     forgotLink?.classList.remove("hidden");
@@ -418,7 +408,6 @@ async function initAuth() {
     lineNickname?.classList.remove("hidden");
     linePassword?.classList.remove("hidden");
     linePwConfirm?.classList.remove("hidden");
-    lineRole?.classList.remove("hidden");
     btnSubmitIn?.classList.add("hidden");
     btnSubmitUp?.classList.remove("hidden");
     forgotLink?.classList.add("hidden");
@@ -519,7 +508,7 @@ async function initAuth() {
     const email = String(emailInput?.value || "").trim();
     const password = String(pwInput?.dataset.realPassword || pwInput?.value || "");
     const passwordConfirm = String(pwConfirmInput?.value || "").trim();
-    const role = String(roleInput?.value || "").trim().toLowerCase();
+    const role = "all";
     const nicknameErr = validateNickname(nickname);
     if (nicknameErr) { setStatus(nicknameErr, true); return; }
     const emailErr = validateEmail(email);
@@ -531,8 +520,6 @@ async function initAuth() {
       setStatus("비밀번호와 비밀번호 확인이 일치하지 않습니다.", true);
       return;
     }
-    const roleErr = validateRole(role);
-    if (roleErr) { setStatus(roleErr, true); return; }
 
     const { data, error } = await client.auth.signUp({
       email,
