@@ -364,19 +364,8 @@ async function initAuth() {
     modeActions?.classList.remove("hidden");
   }
 
-  function backToIntro() {
-    authMode = "";
-    step?.classList.add("hidden");
-    intro?.classList.remove("hidden");
-    introActions?.classList.remove("hidden");
-    authFields?.classList.add("hidden");
-    modeActions?.classList.add("hidden");
-    btnSubmitIn?.classList.add("hidden");
-    btnSubmitUp?.classList.add("hidden");
-    forgotLink?.classList.add("hidden");
-    btnSwitchMode?.classList.add("hidden");
-    if (authSub) authSub.textContent = "처음 가입한 계정은 관리자 승인 후 이용 가능합니다.";
-    setStatus("");
+  function goToHome() {
+    location.href = "./index.html";
   }
 
   function enterLoginMode() {
@@ -438,7 +427,7 @@ async function initAuth() {
 
   btnEnterIn?.addEventListener("click", enterLoginMode);
   btnEnterUp?.addEventListener("click", enterSignUpMode);
-  btnBackIntro?.addEventListener("click", backToIntro);
+  btnBackIntro?.addEventListener("click", goToHome);
   setupInputEnterNavigation();
   btnSwitchMode?.addEventListener("click", () => {
     if (authMode === "signin") {
