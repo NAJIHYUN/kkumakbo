@@ -663,6 +663,10 @@ th.col-title{text-align:center}
 .scroll-index-item.clickable{
   cursor:pointer;
 }
+.scroll-index.hide-index-labels .scroll-index-item{
+  opacity:0;
+  pointer-events:none;
+}
 .scroll-index-item.dot{
   color:#cfcfcf;
 }

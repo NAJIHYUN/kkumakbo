@@ -654,6 +654,7 @@ function renderScrollIndex() {
   const scroller = $("#tableScroll");
   const thumb = $("#scrollIndexThumb");
   const rows = Array.from($("#tbody")?.querySelectorAll("tr") || []);
+  const sortMode = String($("#sort")?.value || "");
   if (!rail || !scroller || rows.length === 0) {
     if (rail) {
       rail.innerHTML = "";
@@ -661,6 +662,7 @@ function renderScrollIndex() {
     }
     return;
   }
+  rail.classList.toggle("hide-index-labels", sortMode === "latest");
 
   const counts = new Map(SCROLL_INDEX_TOKENS.map((t) => [t, 0]));
   const firstOffsets = new Map();
