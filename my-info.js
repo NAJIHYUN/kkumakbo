@@ -138,8 +138,18 @@ function buildAuthPageUrl() {
   return `./auth.html?next=${encodeURIComponent(next)}`;
 }
 
+function buildAuthModeUrl(mode = "") {
+  const base = new URL(buildAuthPageUrl(), location.href);
+  const normalized = String(mode || "").trim().toLowerCase();
+  if (normalized === "signin" || normalized === "signup") {
+    base.searchParams.set("mode", normalized);
+  }
+  return base.toString();
+}
+
 function setGuestMode() {
-  const nextUrl = buildAuthPageUrl();
+  const loginUrl = buildAuthModeUrl("signin");
+  const signupUrl = buildAuthModeUrl("signup");
   const infoForm = document.querySelector(".package-form.myinfo-form");
   const guestActions = $("#myInfoGuestActions");
   [
@@ -161,10 +171,10 @@ function setGuestMode() {
   guestActions?.classList.remove("hidden");
 
   $("#btnMyInfoGuestLogin")?.addEventListener("click", () => {
-    location.href = nextUrl;
+    location.href = loginUrl;
   });
   $("#btnMyInfoGuestSignup")?.addEventListener("click", () => {
-    location.href = `${nextUrl}&mode=signup`;
+    location.href = signupUrl;
   });
 
   const searchInput = $("#myPackagesSearch");
