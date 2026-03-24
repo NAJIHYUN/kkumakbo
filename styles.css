@@ -2472,8 +2472,8 @@ body[data-share].share-team-middle .page-box.selected .page-canvas{
   }
   .index-page .controls .search-wrap,
   .index-page .controls .sort-trigger{
-    min-height:36px;
-    height:36px;
+    min-height:32px;
+    height:32px;
   }
   .index-page .controls .sort-trigger{
     position:relative;

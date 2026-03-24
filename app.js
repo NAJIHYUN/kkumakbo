@@ -1318,6 +1318,63 @@ async function sharePdfBlobMobile(blob, filename) {
   return false;
 }
 
+async function fetchBlobSafe(url = "") {
+  const target = String(url || "").trim();
+  if (!target) return null;
+  const res = await fetch(target, { cache: "no-store" });
+  if (!res.ok) return null;
+  return res.blob();
+}
+
+async function addSongToMergedPdf(pdfDoc, song) {
+  const pdfBlob = await fetchBlobSafe(song?.pdfUrl);
+  if (pdfBlob) {
+    const bytes = await pdfBlob.arrayBuffer();
+    const src = await PDFLib.PDFDocument.load(bytes);
+    const pages = await pdfDoc.copyPages(src, src.getPageIndices());
+    pages.forEach((p) => pdfDoc.addPage(p));
+    return true;
+  }
+
+  const imageBlob = await fetchBlobSafe(song?.jpgUrl);
+  if (!imageBlob) return false;
+
+  const bytes = new Uint8Array(await imageBlob.arrayBuffer());
+  const type = String(imageBlob.type || "").toLowerCase();
+  const isPng = type.includes("png");
+  const embedded = isPng
+    ? await pdfDoc.embedPng(bytes)
+    : await pdfDoc.embedJpg(bytes);
+  const page = pdfDoc.addPage([embedded.width, embedded.height]);
+  page.drawImage(embedded, { x: 0, y: 0, width: embedded.width, height: embedded.height });
+  return true;
+}
+
+async function buildSelectedSongsMergedPdfBlob() {
+  if (!window.PDFLib) throw new Error("PDFLib not loaded");
+  const mergedPdf = await PDFLib.PDFDocument.create();
+
+  for (const id of state.selectedIds) {
+    const song = state.songs.find((s) => s.id === id);
+    if (!song) continue;
+    await addSongToMergedPdf(mergedPdf, song);
+  }
+
+  if (mergedPdf.getPageCount() === 0) return null;
+  const mergedBytes = await mergedPdf.save();
+  return new Blob([mergedBytes], { type: "application/pdf" });
+}
+
+function getMergedSelectedFilename() {
+  const firstSong = state.selectedIds
+    .map((id) => state.songs.find((s) => s.id === id))
+    .find(Boolean);
+  const base = firstSong?.title
+    ? `${firstSong.title} 외 ${Math.max(0, state.selectedIds.length - 1)}곡`
+    : "merged-sheets";
+  return `${sanitizeFilename(base)}.pdf`;
+}
+
 function forceDownloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -3015,14 +3072,35 @@ async function init() {
 
   $("#btnShareSelected").addEventListener("click", async () => {
     if (!state.selectMode || state.selectedIds.length === 0) return;
-    const user = await requireLoggedInAction("병합 후 공유는 로그인 후 사용할 수 있습니다.");
-    if (!user) return;
-    const pkgMeta = await openPackageCreateDialog();
-    if (!pkgMeta) return;
-    const link = buildShareLinkFromSelected(pkgMeta);
-    const saved = await savePackageToVault(pkgMeta, link);
-    if (!saved) return;
-    location.href = link;
+    if (!window.PDFLib) {
+      alert("PDF 병합 라이브러리를 불러오지 못했어요.");
+      return;
+    }
+
+    const btn = $("#btnShareSelected");
+    const prevText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "병합 중...";
+
+    try {
+      const blob = await buildSelectedSongsMergedPdfBlob();
+      if (!blob) {
+        alert("병합할 악보가 없습니다.");
+        return;
+      }
+
+      const filename = getMergedSelectedFilename();
+      const shared = await sharePdfBlobMobile(blob, filename);
+      if (!shared) {
+        forceDownloadBlob(blob, filename);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("악보 병합/공유 중 오류가 발생했어요.");
+    } finally {
+      btn.textContent = prevText;
+      render();
+    }
   });
 
   $("#btnMergeSelected").addEventListener("click", async () => {
@@ -3045,28 +3123,13 @@ async function init() {
     btn.textContent = "병합 중...";
 
     try {
-      const mergedPdf = await PDFLib.PDFDocument.create();
-
-      for (const id of state.selectedIds) {
-        const song = state.songs.find((s) => s.id === id);
-        if (!song?.pdfUrl) continue;
-
-        const res = await fetch(song.pdfUrl, { cache: "no-store" });
-        if (!res.ok) continue;
-        const bytes = await res.arrayBuffer();
-        const src = await PDFLib.PDFDocument.load(bytes);
-        const pages = await mergedPdf.copyPages(src, src.getPageIndices());
-        pages.forEach((p) => mergedPdf.addPage(p));
-      }
-
-      if (mergedPdf.getPageCount() === 0) {
+      const blob = await buildSelectedSongsMergedPdfBlob();
+      if (!blob) {
         if (popup) popup.close();
         alert("병합할 PDF가 없습니다.");
         return;
       }
-
-      const mergedBytes = await mergedPdf.save();
-      const blob = new Blob([mergedBytes], { type: "application/pdf" });
+      
       const blobUrl = URL.createObjectURL(blob);
 
       if (popup) {
