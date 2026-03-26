@@ -11,23 +11,93 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗞️</text></svg>">
   <script src="./theme.js"></script>
   <link rel="stylesheet" href="./styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="./supabase-config.js?v=20260324-1"></script>
+  <script defer src="./supabase-client.js?v=20260324-1"></script>
+  <script defer src="./guest-page-guard.js"></script>
+  <script defer src="./feed.js"></script>
 </head>
-<body class="index-page">
+<body class="index-page feed-page" data-guest-page="feed">
   <header class="topbar">
     <div class="brand">
       <strong>피드</strong>
     </div>
     <div class="top-actions">
-      <a class="link" href="./index.html">← 악보 목록</a>
+      <a class="link" href="./index.html">← 악보함</a>
     </div>
   </header>
 
   <main class="container">
-    <section class="share-card">
-      <h2 class="h2">피드</h2>
-      <p class="sub">피드 페이지는 다음 단계에서 연결하면 됩니다.</p>
+    <section class="guest-page-card hidden" data-guest-actions>
+      <div class="myinfo-guest-actions">
+        <p class="myinfo-guest-copy">피드는 로그인 후 확인할 수 있습니다.</p>
+      </div>
     </section>
+
+    <section id="feedList" class="feed-list" aria-label="피드 미리보기" data-guest-hide></section>
   </main>
+
+  <button id="feedComposeBtn" class="feed-compose" type="button" aria-label="글쓰기" data-guest-hide>
+    <span class="feed-compose-plus" aria-hidden="true">+</span>
+    <span>글쓰기</span>
+  </button>
+
+  <div id="feedWriteModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="feedWriteTitle">
+    <div class="modal-backdrop" data-feed-close="1"></div>
+    <div class="modal-card feed-write-card">
+      <div class="modal-head feed-write-head">
+        <button class="feed-write-back" type="button" aria-label="닫기" data-feed-close="1">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 4.5 7.5 12l7.5 7.5"></path>
+          </svg>
+        </button>
+        <strong id="feedWriteTitle" class="m-title sr-only">글쓰기</strong>
+        <button id="feedWriteSubmit" class="feed-write-submit" type="button" disabled>남기기</button>
+      </div>
+      <div class="modal-body feed-write-body">
+        <div class="feed-write-destination">
+          <button id="feedWriteDestinationTrigger" class="feed-write-destination-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+            <span id="feedWriteDestinationLabel">어디에 글을 남길까요?</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+          </button>
+          <div id="feedWriteDestinationMenu" class="feed-write-destination-menu hidden" role="listbox" aria-label="글쓰기 분류">
+            <button class="feed-write-destination-option" type="button" data-feed-type="notice">공지</button>
+            <button class="feed-write-destination-option" type="button" data-feed-type="new-song">새 악보</button>
+            <button class="feed-write-destination-option" type="button" data-feed-type="praise-recommend">찬양 추천</button>
+          </div>
+        </div>
+        <label class="add-label feed-write-label" for="feedWriteSubject">
+          <span class="sr-only">제목</span>
+          <input id="feedWriteSubject" class="input feed-write-subject" type="text" placeholder="제목을 입력해주세요" maxlength="80" />
+        </label>
+        <label class="add-label feed-write-label" for="feedWriteText">
+          <span class="sr-only">내용</span>
+          <textarea id="feedWriteText" class="textarea feed-write-textarea" placeholder="팀에 공유할 내용을 적어보세요." maxlength="600"></textarea>
+        </label>
+        <input id="feedImageInput" class="hidden" type="file" accept="image/*" />
+        <div id="feedImagePreview" class="feed-image-preview hidden"></div>
+        <div id="feedLinkAttached" class="feed-link-attached hidden"></div>
+        <div class="feed-write-toolbar">
+          <button id="feedImagePickerBtn" class="feed-write-toolbtn" type="button">사진</button>
+          <button id="feedLinkPickerBtn" class="feed-write-toolbtn" type="button">링크</button>
+        </div>
+        <div id="feedLinkEditor" class="feed-link-editor hidden">
+          <label class="add-label feed-link-label" for="feedLinkInput">
+            <input id="feedLinkInput" class="input" type="text" placeholder="https://example.com" />
+          </label>
+          <div id="feedLinkPreview" class="feed-link-preview hidden"></div>
+          <div class="feed-link-actions">
+            <button id="feedLinkCancelBtn" class="btn" type="button">취소</button>
+            <button id="feedLinkConfirmBtn" class="btn primary" type="button">확인</button>
+          </div>
+          <div id="feedLinkStatus" class="myinfo-status"></div>
+        </div>
+        <div id="feedWriteStatus" class="myinfo-status"></div>
+      </div>
+    </div>
+  </div>
 
   <nav class="mobile-tabbar" aria-label="모바일 네비게이션">
     <a class="mobile-tabbar-item" href="./index.html">

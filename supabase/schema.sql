@@ -9,6 +9,8 @@ create table if not exists public.profiles (
   email text,
   approved boolean not null default false,
   role text not null default 'all' check (role in ('high','middle','all','admin')),
+  avatar_emoji text not null default '',
+  avatar_bg_color text not null default '#eef3ff',
   created_at timestamptz not null default now()
 );
 
@@ -46,6 +48,12 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute procedure public.handle_new_user();
+
+alter table public.profiles
+add column if not exists avatar_emoji text not null default '';
+
+alter table public.profiles
+add column if not exists avatar_bg_color text not null default '#eef3ff';
 
 -- 2) package links by user (vault)
 create table if not exists public.packages (
@@ -127,7 +135,81 @@ on public.songs(created_at desc);
 alter table public.songs
 add column if not exists uploader_nickname text not null default '';
 
--- 4) storage bucket + policies (song files)
+-- 4) feed posts
+create table if not exists public.feed_posts (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  author_nickname text not null default '',
+  author_avatar text not null default '',
+  author_avatar_bg text not null default '#eef3ff',
+  post_type text not null check (post_type in ('notice','new-song','praise-recommend')),
+  title text not null default '',
+  content text not null default '',
+  image_url text not null default '',
+  link_url text not null default '',
+  link_thumbnail_url text not null default '',
+  created_at timestamptz not null default now()
+);
+
+alter table public.feed_posts enable row level security;
+
+drop policy if exists "feed_posts_select_auth" on public.feed_posts;
+create policy "feed_posts_select_auth"
+on public.feed_posts for select
+to authenticated
+using (true);
+
+drop policy if exists "feed_posts_insert_own" on public.feed_posts;
+create policy "feed_posts_insert_own"
+on public.feed_posts for insert
+to authenticated
+with check (
+  auth.uid() = owner_id
+  and (
+    post_type <> 'notice'
+    or exists (
+      select 1
+      from public.profiles p
+      where p.id = auth.uid()
+        and p.role = 'admin'
+    )
+  )
+);
+
+drop policy if exists "feed_posts_update_own" on public.feed_posts;
+create policy "feed_posts_update_own"
+on public.feed_posts for update
+to authenticated
+using (auth.uid() = owner_id)
+with check (
+  auth.uid() = owner_id
+  and (
+    post_type <> 'notice'
+    or exists (
+      select 1
+      from public.profiles p
+      where p.id = auth.uid()
+        and p.role = 'admin'
+    )
+  )
+);
+
+drop policy if exists "feed_posts_delete_own" on public.feed_posts;
+create policy "feed_posts_delete_own"
+on public.feed_posts for delete
+to authenticated
+using (auth.uid() = owner_id);
+
+create index if not exists feed_posts_created_idx
+on public.feed_posts(created_at desc);
+
+alter table public.feed_posts
+add column if not exists author_avatar text not null default '';
+
+alter table public.feed_posts
+add column if not exists author_avatar_bg text not null default '#eef3ff';
+
+-- 5) storage bucket + policies (song files)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'score-files',

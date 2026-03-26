@@ -27,20 +27,15 @@
   </header>
 
   <main class="container">
+    <div class="myinfo-profile-summary">
+      <div class="myinfo-avatar-wrap">
+        <button id="myInfoAvatarButton" class="myinfo-avatar" type="button" aria-label="프로필 이모지 변경">🐶</button>
+      </div>
+      <strong id="myInfoSummaryNickname" class="myinfo-summary-nickname">-</strong>
+      <div id="myInfoSummaryEmail" class="myinfo-summary-email">-</div>
+    </div>
     <section class="myinfo-page-card">
       <div class="package-form myinfo-form">
-        <div id="myInfoLineNickname" class="package-name-line">
-          <span>닉네임</span>
-          <strong id="myInfoNickname" class="myinfo-value">-</strong>
-        </div>
-        <div id="myInfoLineEmail" class="package-name-line">
-          <span>이메일</span>
-          <strong id="myInfoEmail" class="myinfo-value">-</strong>
-        </div>
-        <div id="myInfoLineRole" class="package-name-line">
-          <span>권한</span>
-          <strong id="myInfoRole" class="myinfo-value">-</strong>
-        </div>
         <label id="myInfoLinePassword" class="package-name-line" for="myInfoNewPassword">
           <span>새 비밀번호</span>
           <input id="myInfoNewPassword" class="input package-name-input" type="password" placeholder="5~15자 (영문/숫자/!@#)" />
@@ -61,13 +56,6 @@
         </div>
         <div id="myInfoStatus" class="myinfo-status"></div>
       </div>
-      <div id="myInfoGuestActions" class="myinfo-guest-actions hidden">
-        <p class="myinfo-guest-copy">찜하기, 병합 후 공유, 악보 추가는 로그인 후 사용할 수 있습니다.</p>
-        <div class="myinfo-guest-buttons">
-          <button id="btnMyInfoGuestLogin" class="btn primary" type="button">로그인</button>
-          <button id="btnMyInfoGuestSignup" class="btn" type="button">회원가입</button>
-        </div>
-      </div>
     </section>
     <section id="myInfoPackagesSection" class="myinfo-packages-section">
       <strong id="myInfoPackagesTitle" class="myinfo-packages-title">나의 악보</strong>
@@ -78,6 +66,43 @@
       <div id="myPackagesList" class="vault-list"></div>
     </section>
   </main>
+
+  <div id="myInfoEmojiModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="myInfoEmojiTab">
+    <div class="modal-backdrop" data-myinfo-emoji-close="1"></div>
+    <div class="modal-card package-modal-card">
+      <div class="modal-head">
+        <div class="myinfo-emoji-head">
+          <button id="myInfoEmojiTab" class="myinfo-emoji-head-tab is-active" type="button">프로필 이모지</button>
+          <button id="myInfoAvatarBgTab" class="myinfo-emoji-head-tab" type="button">배경색</button>
+        </div>
+        <button class="btn ghost" type="button" data-myinfo-emoji-close="1">닫기</button>
+      </div>
+      <div class="modal-body myinfo-emoji-modal-body">
+        <div id="myInfoEmojiPicker" class="myinfo-emoji-picker" role="listbox" aria-label="이모지 선택"></div>
+        <div id="myInfoAvatarBgPane" class="myinfo-avatar-bg-pane hidden">
+          <div class="myinfo-avatar-bg-preview-wrap">
+            <button id="myInfoAvatarBgPreview" class="myinfo-avatar myinfo-avatar-preview" type="button" aria-label="배경색 미리보기">🐶</button>
+          </div>
+          <label class="myinfo-avatar-bg-label" for="myInfoAvatarBgWheel">배경색 선택</label>
+          <div class="myinfo-avatar-bg-wheel-wrap">
+            <canvas id="myInfoAvatarBgWheel" class="myinfo-avatar-bg-wheel" width="320" height="320" aria-label="배경색 휠"></canvas>
+            <span id="myInfoAvatarBgMarker" class="myinfo-avatar-bg-marker" aria-hidden="true"></span>
+          </div>
+          <button id="myInfoAvatarBgSaveBtn" class="btn primary" type="button">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="guest-page-card">
+    <div id="myInfoGuestActions" class="myinfo-guest-actions hidden">
+      <p class="myinfo-guest-copy">피드, 찜하기, 악보 추가는 로그인 후 사용할 수 있습니다.</p>
+      <div class="myinfo-guest-buttons">
+        <button id="btnMyInfoGuestLogin" class="btn primary" type="button">로그인</button>
+        <button id="btnMyInfoGuestSignup" class="btn" type="button">회원가입</button>
+      </div>
+    </div>
+  </section>
 
   <nav class="mobile-tabbar" aria-label="모바일 네비게이션">
     <a class="mobile-tabbar-item" href="./index.html">

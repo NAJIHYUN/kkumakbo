@@ -14,13 +14,13 @@
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="./supabase-config.js?v=20260324-1"></script>
   <script defer src="./supabase-client.js?v=20260324-1"></script>
-  <script defer src="./auth-guard.js"></script>
+  <script defer src="./guest-page-guard.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script defer src="./app.js?v=20260324-1"></script>
 </head>
-<body class="index-page" data-page="favorite">
+<body class="index-page" data-page="favorite" data-guest-page="favorite">
   <header class="topbar">
       <div class="top-main">
         <div class="brand">
@@ -41,7 +41,13 @@
   </header>
 
   <main class="container">
-    <section class="controls">
+    <section class="guest-page-card hidden" data-guest-actions>
+      <div class="myinfo-guest-actions">
+        <p class="myinfo-guest-copy">찜한 악보는 로그인 후 확인할 수 있습니다.</p>
+      </div>
+    </section>
+
+    <section class="controls" data-guest-hide>
       <button id="btnSelectMode" class="btn home-btn">선택</button>
       <button id="btnClearSelected" class="btn home-btn hidden" type="button">선택 초기화</button>
       <button id="btnShareSelected" class="btn home-btn primary" disabled>병합 후 공유</button>
@@ -60,14 +66,14 @@
       <button id="btnMergeSelected" class="btn home-btn" disabled>악보 병합</button>
     </section>
 
-    <section id="selectedBar" class="selected-bar selected-bar-collapsed">
+    <section id="selectedBar" class="selected-bar selected-bar-collapsed" data-guest-hide>
       <div class="selected-head">
         <div class="selected-title">선택됨</div>
       </div>
       <div id="selectedChips" class="chips"></div>
     </section>
 
-    <section class="table-wrap">
+    <section class="table-wrap" data-guest-hide>
       <table class="table table-head">
         <thead>
           <tr>

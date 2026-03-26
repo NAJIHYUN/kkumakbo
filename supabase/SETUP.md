@@ -8,6 +8,8 @@
 1. Supabase SQL Editor를 엽니다.
 2. `supabase/schema.sql` 내용을 실행합니다.
 3. 기존 프로젝트라면 `songs.uploader_nickname` 컬럼이 추가되었는지 확인합니다.
+4. 피드 기능을 쓰려면 `feed_posts` 테이블이 생성되었는지 확인합니다.
+5. 프로필 이모지를 쓰려면 `profiles.avatar_emoji`, `profiles.avatar_bg_color`, `feed_posts.author_avatar`, `feed_posts.author_avatar_bg` 컬럼이 추가되었는지 확인합니다.
 
 ## 3) 프론트 설정
 1. `supabase-config.js` 파일을 열어 아래 값을 입력합니다.
@@ -27,8 +29,18 @@ window.SUPABASE_CONFIG = {
 ## 5) 동작 요약
 - 로그인 세션은 브라우저에 유지됩니다.
 - 패키지 생성 시 `packages` 테이블에 저장됩니다.
-- 보관함 페이지는 Supabase 우선 조회, 실패 시 localStorage fallback.
+- 피드 글은 `feed_posts` 테이블에 저장됩니다.
+- 링크 썸네일은 `link-preview` Edge Function이 외부 페이지의 Open Graph 이미지를 읽어옵니다.
 
-## 6) 주의
+## 6) Edge Function 배포
+1. Supabase CLI로 로그인합니다.
+2. 프로젝트를 링크합니다.
+3. 아래 함수를 배포합니다.
+
+```bash
+supabase functions deploy link-preview
+```
+
+## 7) 주의
 - 정적 배포 환경에서 CORS/도메인 설정이 필요할 수 있습니다.
 - Auth URL 설정(redirect URL)은 배포 도메인 기준으로 추가하세요.
