@@ -147,6 +147,7 @@ create table if not exists public.feed_posts (
   content text not null default '',
   image_url text not null default '',
   link_url text not null default '',
+  link_title text not null default '',
   link_thumbnail_url text not null default '',
   created_at timestamptz not null default now()
 );
@@ -208,6 +209,9 @@ add column if not exists author_avatar text not null default '';
 
 alter table public.feed_posts
 add column if not exists author_avatar_bg text not null default '#eef3ff';
+
+alter table public.feed_posts
+add column if not exists link_title text not null default '';
 
 -- 5) storage bucket + policies (song files)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

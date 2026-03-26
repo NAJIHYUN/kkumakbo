@@ -13,6 +13,7 @@ let feedWriteType = "";
 let feedWriteIsAdmin = false;
 let feedWriteImageDataUrl = "";
 let feedWriteLinkUrl = "";
+let feedWriteLinkTitle = "";
 let feedWriteLinkThumbnailUrl = "";
 let feedLinkPreviewToken = 0;
 const FEED_DRAFT_STORAGE_KEY = "kkumakbo.feedDraft";
@@ -50,6 +51,16 @@ function getYoutubeThumbnailUrl(url = "") {
     return videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : "";
   } catch {
     return "";
+  }
+}
+
+function getLinkDisplayHost(url = "") {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  try {
+    return new URL(raw).hostname.replace(/^www\./, "");
+  } catch {
+    return raw;
   }
 }
 
@@ -157,7 +168,7 @@ function createFeedPostElement(post) {
     <h2 class="feed-post-title">${escapeHtml(post.title || "제목 없는 글")}</h2>
     <p class="feed-post-copy">${escapeHtml(post.content)}</p>
     ${post.imageUrl ? `<img class="feed-post-image" alt="" src="${escapeHtml(post.imageUrl)}" />` : ""}
-    ${post.linkUrl ? `<a class="feed-post-link" href="${escapeHtml(post.linkUrl)}">${(post.linkThumbnailUrl || getYoutubeThumbnailUrl(post.linkUrl)) ? `<img class="feed-post-link-thumb" alt="" src="${escapeHtml(post.linkThumbnailUrl || getYoutubeThumbnailUrl(post.linkUrl))}" />` : ""}<span class="feed-post-link-url">${escapeHtml(post.linkUrl)}</span></a>` : ""}
+    ${post.linkUrl ? `<a class="feed-post-link" href="${escapeHtml(post.linkUrl)}">${(post.linkThumbnailUrl || getYoutubeThumbnailUrl(post.linkUrl)) ? `<img class="feed-post-link-thumb" alt="" src="${escapeHtml(post.linkThumbnailUrl || getYoutubeThumbnailUrl(post.linkUrl))}" />` : ""}<strong class="feed-post-link-title">${escapeHtml(post.linkTitle || getLinkDisplayHost(post.linkUrl))}</strong><span class="feed-post-link-url">${escapeHtml(post.linkUrl)}</span></a>` : ""}
   `;
   return article;
 }
@@ -165,10 +176,18 @@ function createFeedPostElement(post) {
 async function loadFeedPosts() {
   const client = getClient();
   if (!client) return [];
-  const { data, error } = await client
+  let data;
+  let error;
+  ({ data, error } = await client
     .from("feed_posts")
-    .select("id, owner_id, author_nickname, author_avatar, author_avatar_bg, post_type, title, content, image_url, link_url, link_thumbnail_url, created_at")
-    .order("created_at", { ascending: false });
+    .select("id, owner_id, author_nickname, author_avatar, author_avatar_bg, post_type, title, content, image_url, link_url, link_title, link_thumbnail_url, created_at")
+    .order("created_at", { ascending: false }));
+  if (error) {
+    ({ data, error } = await client
+      .from("feed_posts")
+      .select("id, owner_id, author_nickname, author_avatar, author_avatar_bg, post_type, title, content, image_url, link_url, link_thumbnail_url, created_at")
+      .order("created_at", { ascending: false }));
+  }
   if (error || !Array.isArray(data)) return [];
   return data.map((row) => ({
     id: row.id,
@@ -181,6 +200,7 @@ async function loadFeedPosts() {
     content: row.content || "",
     imageUrl: row.image_url || "",
     linkUrl: row.link_url || "",
+    linkTitle: row.link_title || "",
     linkThumbnailUrl: row.link_thumbnail_url || "",
     createdAt: row.created_at || new Date().toISOString(),
   }));
@@ -249,7 +269,7 @@ function renderFeedLinkAttached() {
     return;
   }
   box.classList.remove("hidden");
-  box.innerHTML = `<span>${escapeHtml(feedWriteLinkUrl)}</span>`;
+  box.innerHTML = `<strong class="feed-link-attached-title">${escapeHtml(feedWriteLinkTitle || getLinkDisplayHost(feedWriteLinkUrl))}</strong><span>${escapeHtml(feedWriteLinkUrl)}</span>`;
 }
 
 function renderFeedLinkPreview(url = "") {
@@ -271,6 +291,7 @@ function getFeedDraftPayload() {
     content: String($("#feedWriteText")?.value || "").trim(),
     imageUrl: feedWriteImageDataUrl,
     linkUrl: feedWriteLinkUrl,
+    linkTitle: feedWriteLinkTitle,
     linkThumbnailUrl: feedWriteLinkThumbnailUrl,
   };
 }
@@ -283,6 +304,7 @@ function hasFeedDraftChanges() {
       draft.content ||
       draft.imageUrl ||
       draft.linkUrl ||
+      draft.linkTitle ||
       draft.linkThumbnailUrl,
   );
 }
@@ -315,6 +337,7 @@ function resetFeedComposeState() {
   feedWriteType = "";
   feedWriteImageDataUrl = "";
   feedWriteLinkUrl = "";
+  feedWriteLinkTitle = "";
   feedWriteLinkThumbnailUrl = "";
   const subjectInput = $("#feedWriteSubject");
   const textarea = $("#feedWriteText");
@@ -339,6 +362,7 @@ function applyFeedDraft(draft) {
   feedWriteType = String(draft.type || "");
   feedWriteImageDataUrl = String(draft.imageUrl || "");
   feedWriteLinkUrl = String(draft.linkUrl || "");
+  feedWriteLinkTitle = String(draft.linkTitle || "");
   feedWriteLinkThumbnailUrl = String(draft.linkThumbnailUrl || "");
   const subjectInput = $("#feedWriteSubject");
   const textarea = $("#feedWriteText");
@@ -446,6 +470,7 @@ async function tryRenderFeedLinkPreview(value = "") {
   try {
     const preview = await fetchLinkPreview(url);
     if (token !== feedLinkPreviewToken) return;
+    feedWriteLinkTitle = String(preview?.title || "").trim();
     feedWriteLinkThumbnailUrl = String(preview?.image || "").trim();
     renderFeedLinkPreview(feedWriteLinkThumbnailUrl);
     setFeedLinkStatus("");
@@ -501,7 +526,9 @@ async function submitFeedPost() {
     return;
   }
 
-  const { data, error } = await client
+  let data;
+  let error;
+  ({ data, error } = await client
     .from("feed_posts")
     .insert({
       owner_id: user.id,
@@ -513,11 +540,29 @@ async function submitFeedPost() {
       content,
       image_url: feedWriteImageDataUrl,
       link_url: feedWriteLinkUrl,
+      link_title: feedWriteLinkTitle,
       link_thumbnail_url: feedWriteLinkThumbnailUrl,
     })
-    .select("id, owner_id, author_nickname, author_avatar, author_avatar_bg, post_type, title, content, image_url, link_url, link_thumbnail_url, created_at")
-    .single();
-
+    .select("id, owner_id, author_nickname, author_avatar, author_avatar_bg, post_type, title, content, image_url, link_url, link_title, link_thumbnail_url, created_at")
+    .single());
+  if (error) {
+    ({ data, error } = await client
+      .from("feed_posts")
+      .insert({
+        owner_id: user.id,
+        author_nickname: nickname,
+        author_avatar: avatarEmoji,
+        author_avatar_bg: avatarBgColor,
+        post_type: feedWriteType,
+        title,
+        content,
+        image_url: feedWriteImageDataUrl,
+        link_url: feedWriteLinkUrl,
+        link_thumbnail_url: feedWriteLinkThumbnailUrl,
+      })
+      .select("id, owner_id, author_nickname, author_avatar, author_avatar_bg, post_type, title, content, image_url, link_url, link_thumbnail_url, created_at")
+      .single());
+  }
   if (error || !data) {
     setFeedWriteStatus("글을 저장하지 못했습니다.", true);
     submitBtn.disabled = false;
@@ -537,6 +582,7 @@ async function submitFeedPost() {
       content: data.content,
       imageUrl: data.image_url || "",
       linkUrl: data.link_url || "",
+      linkTitle: data.link_title || feedWriteLinkTitle,
       linkThumbnailUrl: data.link_thumbnail_url || "",
       createdAt: data.created_at,
     }),
@@ -600,11 +646,13 @@ function bindFeedCompose() {
       if (!feedWriteLinkThumbnailUrl) {
         const youtubeThumbnail = getYoutubeThumbnailUrl(url);
         if (youtubeThumbnail) {
+          feedWriteLinkTitle = getLinkDisplayHost(url);
           feedWriteLinkThumbnailUrl = youtubeThumbnail;
           renderFeedLinkPreview(feedWriteLinkThumbnailUrl);
         } else {
         try {
           const preview = await fetchLinkPreview(url);
+          feedWriteLinkTitle = String(preview?.title || "").trim();
           feedWriteLinkThumbnailUrl = String(preview?.image || "").trim();
           renderFeedLinkPreview(feedWriteLinkThumbnailUrl);
         } catch {}

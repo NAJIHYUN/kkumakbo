@@ -111,7 +111,7 @@ a{color:inherit}
 .feed-list{
   display:grid;
   width:100%;
-  gap:14px;
+  gap:30px;
   padding-bottom:8px;
 }
 .feed-post{
@@ -441,8 +441,7 @@ a{color:inherit}
 .feed-post-link{
   display:block;
   margin-top:14px;
-  padding:14px;
-  border:1px solid #e3e7ee;
+  padding:10px;
   border-radius:18px;
   color:#191f28;
   text-decoration:none;
@@ -3020,6 +3019,7 @@ body[data-share].share-team-middle .page-box.selected .page-canvas{
   }
   .index-page .container{
     padding:0 20px;
+    margin: 0px;
   }
   .container{padding:10px}
   .mobile-tabbar{
