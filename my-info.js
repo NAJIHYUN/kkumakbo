@@ -583,7 +583,8 @@ async function init() {
       cleanupMyInfoAvatarCropState();
     } catch (error) {
       console.error(error);
-      setMyInfoStatus("프로필 사진을 저장하지 못했습니다.", true);
+      const message = String(error?.message || "").trim();
+      setMyInfoStatus(message ? `프로필 사진 저장 실패: ${message}` : "프로필 사진을 저장하지 못했습니다.", true);
     } finally {
       myInfoAvatarUploading = false;
     }
