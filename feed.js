@@ -114,11 +114,20 @@ async function getProfile(userId) {
   const client = getClient();
   if (!client || !userId) return null;
   try {
-    const { data, error } = await client
+    let data;
+    let error;
+    ({ data, error } = await client
       .from("profiles")
-      .select("nickname, role, avatar_emoji, avatar_bg_color")
+      .select("nickname, role, avatar_image_url, avatar_emoji, avatar_bg_color")
       .eq("id", userId)
-      .maybeSingle();
+      .maybeSingle());
+    if (error) {
+      ({ data, error } = await client
+        .from("profiles")
+        .select("nickname, role, avatar_emoji, avatar_bg_color")
+        .eq("id", userId)
+        .maybeSingle());
+    }
     if (error) return null;
     return data || null;
   } catch {
@@ -134,6 +143,7 @@ async function getFeedContext() {
     user,
     nickname: profile?.nickname || user.user_metadata?.nickname || user.email?.split("@")[0] || "사용자",
     role: String(profile?.role || "").toLowerCase(),
+    avatarImageUrl: String(profile?.avatar_image_url || "").trim(),
     avatarEmoji: String(profile?.avatar_emoji || "").trim(),
     avatarBgColor: normalizeAvatarBgColor(profile?.avatar_bg_color || "#eef3ff"),
   };
@@ -149,6 +159,14 @@ function getStableAnimalEmoji(seed = "") {
   return ANIMAL_EMOJIS[hash % ANIMAL_EMOJIS.length] || "🐶";
 }
 
+function getFeedAvatarMarkup(post) {
+  const imageUrl = String(post.authorAvatarImageUrl || "").trim();
+  if (imageUrl) {
+    return `<img src="${escapeHtml(imageUrl)}" alt="" />`;
+  }
+  return escapeHtml(String(post.authorAvatar || "").trim() || getStableAnimalEmoji(post.ownerId || post.author));
+}
+
 function createFeedPostElement(post) {
   const article = document.createElement("article");
   article.className = "feed-post feed-post-user";
@@ -156,7 +174,7 @@ function createFeedPostElement(post) {
   const typeInfo = FEED_TYPE_MAP[post.type] || FEED_TYPE_MAP["new-song"];
   article.innerHTML = `
     <div class="feed-post-head">
-      <div class="feed-avatar" aria-hidden="true" style="background:${escapeHtml(normalizeAvatarBgColor(post.authorAvatarBg || "#eef3ff"))}">${escapeHtml(String(post.authorAvatar || "").trim() || getStableAnimalEmoji(post.ownerId || post.author))}</div>
+      <div class="feed-avatar" aria-hidden="true" style="background:${escapeHtml(normalizeAvatarBgColor(post.authorAvatarBg || "#eef3ff"))}">${getFeedAvatarMarkup(post)}</div>
       <div class="feed-post-meta">
         <div class="feed-post-topline">
           <strong class="feed-post-author">${escapeHtml(post.author)}</strong>
@@ -168,9 +186,28 @@ function createFeedPostElement(post) {
     <h2 class="feed-post-title">${escapeHtml(post.title || "제목 없는 글")}</h2>
     <p class="feed-post-copy">${escapeHtml(post.content)}</p>
     ${post.imageUrl ? `<img class="feed-post-image" alt="" src="${escapeHtml(post.imageUrl)}" />` : ""}
-    ${post.linkUrl ? `<a class="feed-post-link" href="${escapeHtml(post.linkUrl)}">${(post.linkThumbnailUrl || getYoutubeThumbnailUrl(post.linkUrl)) ? `<img class="feed-post-link-thumb" alt="" src="${escapeHtml(post.linkThumbnailUrl || getYoutubeThumbnailUrl(post.linkUrl))}" />` : ""}<strong class="feed-post-link-title">${escapeHtml(post.linkTitle || getLinkDisplayHost(post.linkUrl))}</strong><span class="feed-post-link-url">${escapeHtml(post.linkUrl)}</span></a>` : ""}
+    ${post.linkUrl ? `<a class="feed-post-link" href="${escapeHtml(post.linkUrl)}">${(post.linkThumbnailUrl || getYoutubeThumbnailUrl(post.linkUrl)) ? `<img class="feed-post-link-thumb" alt="" src="${escapeHtml(post.linkThumbnailUrl || getYoutubeThumbnailUrl(post.linkUrl))}" />` : ""}<span class="feed-post-link-url">${escapeHtml(post.linkUrl)}</span></a>` : ""}
   `;
   return article;
+}
+
+async function hydrateFeedLinkCard(post, article) {
+  if (!post?.linkUrl || post?.linkTitle) return;
+  try {
+    const preview = await fetchLinkPreview(post.linkUrl);
+    const nextThumb = String(preview?.image || "").trim();
+    const thumbEl = article.querySelector(".feed-post-link-thumb");
+    if (!thumbEl && nextThumb) {
+      const linkEl = article.querySelector(".feed-post-link");
+      if (linkEl) {
+        const img = document.createElement("img");
+        img.className = "feed-post-link-thumb";
+        img.alt = "";
+        img.src = nextThumb;
+        linkEl.prepend(img);
+      }
+    }
+  } catch {}
 }
 
 async function loadFeedPosts() {
@@ -180,7 +217,7 @@ async function loadFeedPosts() {
   let error;
   ({ data, error } = await client
     .from("feed_posts")
-    .select("id, owner_id, author_nickname, author_avatar, author_avatar_bg, post_type, title, content, image_url, link_url, link_title, link_thumbnail_url, created_at")
+    .select("id, owner_id, author_nickname, author_avatar_image_url, author_avatar, author_avatar_bg, post_type, title, content, image_url, link_url, link_title, link_thumbnail_url, created_at")
     .order("created_at", { ascending: false }));
   if (error) {
     ({ data, error } = await client
@@ -193,6 +230,7 @@ async function loadFeedPosts() {
     id: row.id,
     ownerId: row.owner_id || "",
     author: row.author_nickname || "사용자",
+    authorAvatarImageUrl: row.author_avatar_image_url || "",
     authorAvatar: row.author_avatar || "",
     authorAvatarBg: row.author_avatar_bg || "#eef3ff",
     type: row.post_type || "new-song",
@@ -211,7 +249,11 @@ async function renderFeedPosts() {
   if (!list) return;
   list.innerHTML = "";
   const items = await loadFeedPosts();
-  items.forEach((item) => list.appendChild(createFeedPostElement(item)));
+  items.forEach((item) => {
+    const article = createFeedPostElement(item);
+    list.appendChild(article);
+    hydrateFeedLinkCard(item, article).catch(() => {});
+  });
 }
 
 function syncFeedTypeUi() {
@@ -260,28 +302,21 @@ function renderFeedImagePreview() {
   preview.innerHTML = `<img src="${escapeHtml(feedWriteImageDataUrl)}" alt="선택한 이미지 미리보기" />`;
 }
 
-function renderFeedLinkAttached() {
-  const box = $("#feedLinkAttached");
-  if (!box) return;
-  if (!feedWriteLinkUrl) {
-    box.classList.add("hidden");
-    box.innerHTML = "";
-    return;
-  }
-  box.classList.remove("hidden");
-  box.innerHTML = `<strong class="feed-link-attached-title">${escapeHtml(feedWriteLinkTitle || getLinkDisplayHost(feedWriteLinkUrl))}</strong><span>${escapeHtml(feedWriteLinkUrl)}</span>`;
-}
-
-function renderFeedLinkPreview(url = "") {
+function renderFeedLinkPreview(url = "", title = "", linkUrl = "") {
   const preview = $("#feedLinkPreview");
   if (!preview) return;
-  if (!url) {
+  if (!url && !title && !linkUrl) {
     preview.classList.add("hidden");
     preview.innerHTML = "";
     return;
   }
   preview.classList.remove("hidden");
-  preview.innerHTML = `<img src="${escapeHtml(url)}" alt="링크 썸네일 미리보기" />`;
+  const displayTitle = String(title || "").trim() || getLinkDisplayHost(linkUrl);
+  preview.innerHTML = `
+    ${url ? `<img src="${escapeHtml(url)}" alt="링크 썸네일 미리보기" />` : ""}
+    ${displayTitle ? `<strong class="feed-link-preview-title">${escapeHtml(displayTitle)}</strong>` : ""}
+    ${linkUrl ? `<span class="feed-link-preview-url">${escapeHtml(linkUrl)}</span>` : ""}
+  `;
 }
 
 function getFeedDraftPayload() {
@@ -348,8 +383,7 @@ function resetFeedComposeState() {
   if (imageInput) imageInput.value = "";
   if (linkInput) linkInput.value = "";
   renderFeedImagePreview();
-  renderFeedLinkAttached();
-  renderFeedLinkPreview("");
+  renderFeedLinkPreview("", "", "");
   setFeedLinkEditor(false);
   syncFeedTypeUi();
   syncFeedWriteSubmitState();
@@ -371,8 +405,7 @@ function applyFeedDraft(draft) {
   if (textarea) textarea.value = String(draft.content || "");
   if (linkInput) linkInput.value = feedWriteLinkUrl;
   renderFeedImagePreview();
-  renderFeedLinkAttached();
-  renderFeedLinkPreview(feedWriteLinkThumbnailUrl);
+  renderFeedLinkPreview(feedWriteLinkThumbnailUrl, feedWriteLinkTitle, feedWriteLinkUrl);
   syncFeedTypeUi();
   syncFeedWriteSubmitState();
 }
@@ -426,7 +459,6 @@ function setFeedWriteModal(open) {
     setFeedTypeMenu(false);
     syncFeedWriteSubmitState();
     renderFeedImagePreview();
-    renderFeedLinkAttached();
     setFeedLinkEditor(false);
     requestAnimationFrame(() => $("#feedWriteSubject")?.focus());
   } else {
@@ -457,27 +489,27 @@ async function tryRenderFeedLinkPreview(value = "") {
   const token = ++feedLinkPreviewToken;
   if (!url) {
     feedWriteLinkThumbnailUrl = "";
-    renderFeedLinkPreview("");
+    renderFeedLinkPreview("", "", "");
     return;
   }
   const youtubeThumbnail = getYoutubeThumbnailUrl(url);
   if (youtubeThumbnail) {
+    feedWriteLinkTitle = "";
     feedWriteLinkThumbnailUrl = youtubeThumbnail;
-    renderFeedLinkPreview(feedWriteLinkThumbnailUrl);
+    renderFeedLinkPreview(feedWriteLinkThumbnailUrl, feedWriteLinkTitle, url);
     setFeedLinkStatus("");
-    return;
   }
   try {
     const preview = await fetchLinkPreview(url);
     if (token !== feedLinkPreviewToken) return;
     feedWriteLinkTitle = String(preview?.title || "").trim();
-    feedWriteLinkThumbnailUrl = String(preview?.image || "").trim();
-    renderFeedLinkPreview(feedWriteLinkThumbnailUrl);
+    feedWriteLinkThumbnailUrl = String(preview?.image || "").trim() || youtubeThumbnail;
+    renderFeedLinkPreview(feedWriteLinkThumbnailUrl, feedWriteLinkTitle, url);
     setFeedLinkStatus("");
   } catch {
     if (token !== feedLinkPreviewToken) return;
-    feedWriteLinkThumbnailUrl = "";
-    renderFeedLinkPreview("");
+    feedWriteLinkThumbnailUrl = youtubeThumbnail || "";
+    renderFeedLinkPreview(feedWriteLinkThumbnailUrl, feedWriteLinkTitle, url);
   }
 }
 
@@ -507,7 +539,7 @@ async function submitFeedPost() {
   submitBtn.disabled = true;
   setFeedWriteStatus("");
 
-  const { user, nickname, role, avatarEmoji, avatarBgColor } = await getFeedContext();
+  const { user, nickname, role, avatarImageUrl, avatarEmoji, avatarBgColor } = await getFeedContext();
   if (!user) {
     setFeedWriteStatus("로그인 후 글을 작성할 수 있습니다.", true);
     submitBtn.disabled = false;
@@ -533,6 +565,7 @@ async function submitFeedPost() {
     .insert({
       owner_id: user.id,
       author_nickname: nickname,
+      author_avatar_image_url: avatarImageUrl,
       author_avatar: avatarEmoji,
       author_avatar_bg: avatarBgColor,
       post_type: feedWriteType,
@@ -543,7 +576,7 @@ async function submitFeedPost() {
       link_title: feedWriteLinkTitle,
       link_thumbnail_url: feedWriteLinkThumbnailUrl,
     })
-    .select("id, owner_id, author_nickname, author_avatar, author_avatar_bg, post_type, title, content, image_url, link_url, link_title, link_thumbnail_url, created_at")
+    .select("id, owner_id, author_nickname, author_avatar_image_url, author_avatar, author_avatar_bg, post_type, title, content, image_url, link_url, link_title, link_thumbnail_url, created_at")
     .single());
   if (error) {
     ({ data, error } = await client
@@ -575,6 +608,7 @@ async function submitFeedPost() {
       id: data.id,
       ownerId: data.owner_id || user.id,
       author: data.author_nickname || nickname,
+      authorAvatarImageUrl: data.author_avatar_image_url || avatarImageUrl,
       authorAvatar: data.author_avatar || avatarEmoji,
       authorAvatarBg: data.author_avatar_bg || avatarBgColor,
       type: data.post_type,
@@ -623,51 +657,36 @@ function bindFeedCompose() {
   $("#feedLinkPickerBtn")?.addEventListener("click", () => {
     const input = $("#feedLinkInput");
     if (input) input.value = feedWriteLinkUrl;
-    renderFeedLinkPreview(feedWriteLinkThumbnailUrl);
+    renderFeedLinkPreview(feedWriteLinkThumbnailUrl, feedWriteLinkTitle, feedWriteLinkUrl);
     setFeedLinkStatus("");
     setFeedLinkEditor(true);
   });
 
   $("#feedLinkInput")?.addEventListener("input", (event) => {
     const value = event.currentTarget?.value || "";
+    const url = normalizeLinkUrl(value);
     setFeedLinkStatus("");
-    tryRenderFeedLinkPreview(value).catch(() => {});
+    if (!url) {
+      feedWriteLinkUrl = "";
+      feedWriteLinkTitle = "";
+      feedWriteLinkThumbnailUrl = "";
+    renderFeedLinkPreview("", "", "");
+    return;
+  }
+    feedWriteLinkUrl = url;
+      tryRenderFeedLinkPreview(value).catch(() => {});
   });
 
-  $("#feedLinkConfirmBtn")?.addEventListener("click", () => {
-    (async () => {
-      const input = $("#feedLinkInput");
-      const url = normalizeLinkUrl(input?.value || "");
-      if (!url) {
-        setFeedLinkStatus("링크를 입력해 주세요.", true);
-        return;
-      }
-
-      if (!feedWriteLinkThumbnailUrl) {
-        const youtubeThumbnail = getYoutubeThumbnailUrl(url);
-        if (youtubeThumbnail) {
-          feedWriteLinkTitle = getLinkDisplayHost(url);
-          feedWriteLinkThumbnailUrl = youtubeThumbnail;
-          renderFeedLinkPreview(feedWriteLinkThumbnailUrl);
-        } else {
-        try {
-          const preview = await fetchLinkPreview(url);
-          feedWriteLinkTitle = String(preview?.title || "").trim();
-          feedWriteLinkThumbnailUrl = String(preview?.image || "").trim();
-          renderFeedLinkPreview(feedWriteLinkThumbnailUrl);
-        } catch {}
-        }
-      }
-
-      feedWriteLinkUrl = url;
-      renderFeedLinkAttached();
-      setFeedLinkEditor(false);
-    })().catch(() => {
-      setFeedLinkStatus("링크를 처리하지 못했습니다.", true);
-    });
+  $("#feedLinkCancelBtn")?.addEventListener("click", () => {
+    feedWriteLinkUrl = "";
+    feedWriteLinkTitle = "";
+    feedWriteLinkThumbnailUrl = "";
+    const input = $("#feedLinkInput");
+    if (input) input.value = "";
+    renderFeedLinkPreview("", "", "");
+    setFeedLinkStatus("");
+    setFeedLinkEditor(false);
   });
-
-  $("#feedLinkCancelBtn")?.addEventListener("click", () => setFeedLinkEditor(false));
 
   $("#feedWriteSubmit")?.addEventListener("click", () => {
     submitFeedPost().catch(() => {

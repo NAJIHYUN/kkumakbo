@@ -7,20 +7,29 @@ const KOR_INITIALS = [
   "ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"
 ];
 const ANIMAL_EMOJIS = ["🐶", "🐱", "🐰", "🦊", "🐻", "🐼", "🐯", "🦁", "🐨", "🐷", "🐹", "🐵"];
-const EMOJI_GROUPS = [
-  { label: "동물", items: ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐵","🐔","🐧","🐤","🦄","🐙","🦋","🐥"] },
-  { label: "표정", items: ["😀","😃","😄","😁","😆","🥹","😊","😍","🥰","😘","😎","🤩","🥳","🙂","🤗","🤔","🥲","😭","😤","😴","😇"] },
-  { label: "하트", items: ["❤️","🩷","🧡","💛","💚","🩵","💙","💜","🤍","🖤","🤎","💘","💝","💖","💗","💓","💕","💞","💟","❣️","💌"] },
-  { label: "사물", items: ["🎵","🎶","🎼","🎤","🎧","🎹","🥁","🎷","🎺","🎸","🪕","🎻","🪇","📯"] },
-  { label: "음식", items: ["🍎","🍓","🍇","🍊","🍋","🍉","🍒","🥝","🍅","🥑","🍞","🍔","🍕","🍗","🍟","🍩","🍪","🎂","☕","🧃","🍜"] },
-];
 
 let myInfoPasswordUpdating = false;
-let myInfoAvatarUpdating = false;
-let myInfoAvatarBgUpdating = false;
-let myInfoAvatarBgColorDraft = "#eef3ff";
-let myInfoAvatarBgDragging = false;
+let myInfoAvatarUploading = false;
 const UI_THEME_STORAGE_KEY = "scorebox-ui-theme";
+const AVATAR_CROP_OUTPUT_SIZE = 512;
+const myInfoAvatarCropState = {
+  file: null,
+  image: null,
+  objectUrl: "",
+  naturalWidth: 0,
+  naturalHeight: 0,
+  stageSize: 0,
+  minScale: 1,
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
+  dragging: false,
+  pointerId: null,
+  dragStartX: 0,
+  dragStartY: 0,
+  dragOriginX: 0,
+  dragOriginY: 0,
+};
 
 function normalize(str = "") {
   return String(str).normalize("NFC").trim().toLowerCase();
@@ -69,147 +78,13 @@ function getStableAnimalEmoji(seed = "") {
   return ANIMAL_EMOJIS[hash % ANIMAL_EMOJIS.length] || "🐶";
 }
 
-function getMyInfoAvatarValue(savedEmoji = "", seed = "") {
-  const emoji = String(savedEmoji || "").trim();
-  if (emoji) return emoji;
-  return getStableAnimalEmoji(seed);
-}
-
-function normalizeAvatarBgColor(value = "") {
-  const color = String(value || "").trim();
-  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#eef3ff";
-}
-
-function hslToHex(h, s, l) {
-  const sat = Math.max(0, Math.min(100, s)) / 100;
-  const light = Math.max(0, Math.min(100, l)) / 100;
-  const c = (1 - Math.abs(2 * light - 1)) * sat;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = light - c / 2;
-  let r = 0;
-  let g = 0;
-  let b = 0;
-
-  if (h < 60) [r, g, b] = [c, x, 0];
-  else if (h < 120) [r, g, b] = [x, c, 0];
-  else if (h < 180) [r, g, b] = [0, c, x];
-  else if (h < 240) [r, g, b] = [0, x, c];
-  else if (h < 300) [r, g, b] = [x, 0, c];
-  else [r, g, b] = [c, 0, x];
-
-  const toHex = (value) => Math.round((value + m) * 255).toString(16).padStart(2, "0");
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
-
-function hexToHsl(hex = "") {
-  const normalized = normalizeAvatarBgColor(hex).slice(1);
-  const r = parseInt(normalized.slice(0, 2), 16) / 255;
-  const g = parseInt(normalized.slice(2, 4), 16) / 255;
-  const b = parseInt(normalized.slice(4, 6), 16) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const delta = max - min;
-  let h = 0;
-  const l = (max + min) / 2;
-  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
-
-  if (delta !== 0) {
-    if (max === r) h = 60 * (((g - b) / delta) % 6);
-    else if (max === g) h = 60 * ((b - r) / delta + 2);
-    else h = 60 * ((r - g) / delta + 4);
-  }
-  if (h < 0) h += 360;
-  return { h, s: s * 100, l: l * 100 };
-}
-
-function setMyInfoAvatar(savedEmoji = "", seed = "", bgColor = "") {
+function setMyInfoAvatar(avatarImageUrl = "", seed = "") {
   const avatar = $("#myInfoAvatarButton");
   if (!avatar) return;
-  avatar.textContent = getMyInfoAvatarValue(savedEmoji, seed);
-  avatar.style.background = normalizeAvatarBgColor(bgColor);
-}
-
-function setMyInfoAvatarBgPreview(savedEmoji = "", seed = "", bgColor = "") {
-  const preview = $("#myInfoAvatarBgPreview");
-  if (!preview) return;
-  preview.textContent = getMyInfoAvatarValue(savedEmoji, seed);
-  preview.style.background = normalizeAvatarBgColor(bgColor);
-}
-
-function drawMyInfoAvatarBgWheel() {
-  const canvas = $("#myInfoAvatarBgWheel");
-  if (!(canvas instanceof HTMLCanvasElement)) return;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  const width = canvas.width;
-  const height = canvas.height;
-
-  ctx.clearRect(0, 0, width, height);
-
-  const hueGradient = ctx.createLinearGradient(0, 0, width, 0);
-  hueGradient.addColorStop(0, "#ff0000");
-  hueGradient.addColorStop(1 / 6, "#ffff00");
-  hueGradient.addColorStop(2 / 6, "#00ff00");
-  hueGradient.addColorStop(3 / 6, "#00ffff");
-  hueGradient.addColorStop(4 / 6, "#0000ff");
-  hueGradient.addColorStop(5 / 6, "#ff00ff");
-  hueGradient.addColorStop(1, "#ff0000");
-  ctx.fillStyle = hueGradient;
-  ctx.fillRect(0, 0, width, height);
-
-  const whiteGradient = ctx.createLinearGradient(0, 0, 0, height);
-  whiteGradient.addColorStop(0, "rgba(255,255,255,0.88)");
-  whiteGradient.addColorStop(0.42, "rgba(255,255,255,0)");
-  whiteGradient.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = whiteGradient;
-  ctx.fillRect(0, 0, width, height);
-
-  const blackGradient = ctx.createLinearGradient(0, 0, 0, height);
-  blackGradient.addColorStop(0, "rgba(0,0,0,0)");
-  blackGradient.addColorStop(1, "rgba(0,0,0,0.96)");
-  ctx.fillStyle = blackGradient;
-  ctx.fillRect(0, 0, width, height);
-
-  updateMyInfoAvatarBgMarker();
-}
-
-function updateMyInfoAvatarBgMarker() {
-  const canvas = $("#myInfoAvatarBgWheel");
-  const marker = $("#myInfoAvatarBgMarker");
-  if (!(canvas instanceof HTMLCanvasElement) || !(marker instanceof HTMLElement)) return;
-  const rect = canvas.getBoundingClientRect();
-  const { h, l } = hexToHsl(myInfoAvatarBgColorDraft);
-  const x = (h / 360) * rect.width;
-  const y = ((100 - l) / 100) * rect.height;
-  marker.style.left = `${Math.max(0, Math.min(rect.width, x))}px`;
-  marker.style.top = `${Math.max(0, Math.min(rect.height, y))}px`;
-  marker.style.background = normalizeAvatarBgColor(myInfoAvatarBgColorDraft);
-}
-
-function pickMyInfoAvatarBgColorFromWheel(event) {
-  const canvas = $("#myInfoAvatarBgWheel");
-  if (!(canvas instanceof HTMLCanvasElement)) return "";
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const x = (event.clientX - rect.left) * scaleX;
-  const y = (event.clientY - rect.top) * scaleY;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return "";
-  const pixel = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
-  if (!pixel || pixel[3] === 0) return "";
-  return normalizeAvatarBgColor(
-    `#${[pixel[0], pixel[1], pixel[2]].map((value) => value.toString(16).padStart(2, "0")).join("")}`,
-  );
-}
-
-function handleMyInfoAvatarBgPointer(event, savedEmoji = "", seed = "") {
-  const color = pickMyInfoAvatarBgColorFromWheel(event);
-  if (!color) return;
-  myInfoAvatarBgColorDraft = color;
-  setMyInfoAvatarBgPreview(savedEmoji, seed, myInfoAvatarBgColorDraft);
-  updateMyInfoAvatarBgMarker();
+  const imageUrl = String(avatarImageUrl || "").trim();
+  avatar.innerHTML = imageUrl
+    ? `<img src="${imageUrl.replaceAll('"', "&quot;")}" alt="" />`
+    : `<span>${getStableAnimalEmoji(seed)}</span>`;
 }
 
 function setMyInfoSummary(nickname = "-", email = "-") {
@@ -219,80 +94,134 @@ function setMyInfoSummary(nickname = "-", email = "-") {
   if (emailEl) emailEl.textContent = email || "-";
 }
 
-function setMyInfoEmojiModal(open) {
-  const modal = $("#myInfoEmojiModal");
-  if (!modal) return;
-  modal.classList.toggle("hidden", !open);
-  if (open) drawMyInfoAvatarBgWheel();
+function closeMyInfoAvatarCropModal() {
+  $("#myInfoAvatarCropModal")?.classList.add("hidden");
 }
 
-function setMyInfoEmojiTab(tab = "emoji") {
-  const isBg = tab === "bg";
-  $("#myInfoEmojiTab")?.classList.toggle("is-active", !isBg);
-  $("#myInfoAvatarBgTab")?.classList.toggle("is-active", isBg);
-  $("#myInfoEmojiPicker")?.classList.toggle("hidden", isBg);
-  $("#myInfoAvatarBgPane")?.classList.toggle("hidden", !isBg);
+function openMyInfoAvatarCropModal() {
+  $("#myInfoAvatarCropModal")?.classList.remove("hidden");
 }
 
-function renderMyInfoEmojiPicker(selectedEmoji = "", onSelect = () => {}) {
-  const picker = $("#myInfoEmojiPicker");
-  if (!picker) return;
-  picker.innerHTML = "";
-  EMOJI_GROUPS.forEach((group) => {
-    const section = document.createElement("section");
-    section.className = "myinfo-emoji-group";
+function cleanupMyInfoAvatarCropState() {
+  if (myInfoAvatarCropState.objectUrl) {
+    URL.revokeObjectURL(myInfoAvatarCropState.objectUrl);
+  }
+  myInfoAvatarCropState.file = null;
+  myInfoAvatarCropState.image = null;
+  myInfoAvatarCropState.objectUrl = "";
+  myInfoAvatarCropState.naturalWidth = 0;
+  myInfoAvatarCropState.naturalHeight = 0;
+  myInfoAvatarCropState.stageSize = 0;
+  myInfoAvatarCropState.minScale = 1;
+  myInfoAvatarCropState.scale = 1;
+  myInfoAvatarCropState.offsetX = 0;
+  myInfoAvatarCropState.offsetY = 0;
+  myInfoAvatarCropState.dragging = false;
+  myInfoAvatarCropState.pointerId = null;
+  const imageEl = $("#myInfoAvatarCropImage");
+  if (imageEl) {
+    imageEl.src = "";
+    imageEl.classList.add("hidden");
+    imageEl.style.width = "";
+    imageEl.style.height = "";
+    imageEl.style.left = "";
+    imageEl.style.top = "";
+  }
+}
 
-    const title = document.createElement("strong");
-    title.className = "myinfo-emoji-group-title";
-    title.textContent = group.label;
+function clampMyInfoAvatarCropPosition() {
+  const state = myInfoAvatarCropState;
+  const displayWidth = state.naturalWidth * state.scale;
+  const displayHeight = state.naturalHeight * state.scale;
+  const minOffsetX = Math.min(0, state.stageSize - displayWidth);
+  const minOffsetY = Math.min(0, state.stageSize - displayHeight);
+  state.offsetX = Math.min(0, Math.max(minOffsetX, state.offsetX));
+  state.offsetY = Math.min(0, Math.max(minOffsetY, state.offsetY));
+}
 
-    const grid = document.createElement("div");
-    grid.className = "myinfo-emoji-grid";
+function syncMyInfoAvatarCropPreview() {
+  const imageEl = $("#myInfoAvatarCropImage");
+  const state = myInfoAvatarCropState;
+  if (!imageEl || !state.image) return;
+  clampMyInfoAvatarCropPosition();
+  imageEl.classList.remove("hidden");
+  imageEl.style.width = `${state.naturalWidth * state.scale}px`;
+  imageEl.style.height = `${state.naturalHeight * state.scale}px`;
+  imageEl.style.left = `${state.offsetX}px`;
+  imageEl.style.top = `${state.offsetY}px`;
+}
 
-    group.items.forEach((emoji) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "myinfo-emoji-option";
-      button.textContent = emoji;
-      button.setAttribute("role", "option");
-      button.setAttribute("aria-selected", String(emoji === selectedEmoji));
-      button.classList.toggle("is-selected", emoji === selectedEmoji);
-      button.addEventListener("click", () => onSelect(emoji));
-      grid.appendChild(button);
-    });
+function updateMyInfoAvatarCropScale(nextScale) {
+  const state = myInfoAvatarCropState;
+  if (!state.image || !state.stageSize) return;
+  const safeScale = Math.max(state.minScale, Number(nextScale) || state.minScale);
+  const prevDisplayWidth = state.naturalWidth * state.scale;
+  const prevDisplayHeight = state.naturalHeight * state.scale;
+  const centerX = (state.stageSize / 2 - state.offsetX) / prevDisplayWidth;
+  const centerY = (state.stageSize / 2 - state.offsetY) / prevDisplayHeight;
+  state.scale = safeScale;
+  const nextDisplayWidth = state.naturalWidth * state.scale;
+  const nextDisplayHeight = state.naturalHeight * state.scale;
+  state.offsetX = state.stageSize / 2 - nextDisplayWidth * centerX;
+  state.offsetY = state.stageSize / 2 - nextDisplayHeight * centerY;
+  syncMyInfoAvatarCropPreview();
+}
 
-    section.append(title, grid);
-    picker.appendChild(section);
+async function createMyInfoAvatarCroppedBlob() {
+  const state = myInfoAvatarCropState;
+  if (!state.image || !state.stageSize) throw new Error("프로필 이미지를 자를 수 없습니다.");
+  const canvas = document.createElement("canvas");
+  canvas.width = AVATAR_CROP_OUTPUT_SIZE;
+  canvas.height = AVATAR_CROP_OUTPUT_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("이미지 캔버스를 만들 수 없습니다.");
+  const ratio = AVATAR_CROP_OUTPUT_SIZE / state.stageSize;
+  ctx.drawImage(
+    state.image,
+    state.offsetX * ratio,
+    state.offsetY * ratio,
+    state.naturalWidth * state.scale * ratio,
+    state.naturalHeight * state.scale * ratio,
+  );
+  return await new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("프로필 이미지를 저장 형식으로 만들지 못했습니다."));
+    }, "image/jpeg", 0.92);
   });
 }
 
-async function saveMyInfoAvatarEmoji(client, userId, emoji) {
-  const { error: profileError } = await client
-    .from("profiles")
-    .update({ avatar_emoji: emoji })
-    .eq("id", userId);
-  if (profileError) throw profileError;
+async function openMyInfoAvatarCropper(file) {
+  const imageEl = $("#myInfoAvatarCropImage");
+  const stage = $("#myInfoAvatarCropStage");
+  const zoomInput = $("#myInfoAvatarCropZoom");
+  if (!imageEl || !stage || !zoomInput || !file) return;
+  cleanupMyInfoAvatarCropState();
+  const objectUrl = URL.createObjectURL(file);
+  const image = new Image();
+  image.decoding = "async";
+  image.src = objectUrl;
+  await image.decode();
 
-  const { error: feedError } = await client
-    .from("feed_posts")
-    .update({ author_avatar: emoji })
-    .eq("owner_id", userId);
-  if (feedError) throw feedError;
-}
+  const state = myInfoAvatarCropState;
+  state.file = file;
+  state.image = image;
+  state.objectUrl = objectUrl;
+  state.naturalWidth = image.naturalWidth || image.width;
+  state.naturalHeight = image.naturalHeight || image.height;
+  state.stageSize = stage.clientWidth || 280;
+  state.minScale = Math.max(state.stageSize / state.naturalWidth, state.stageSize / state.naturalHeight);
+  state.scale = state.minScale;
+  state.offsetX = (state.stageSize - state.naturalWidth * state.scale) / 2;
+  state.offsetY = (state.stageSize - state.naturalHeight * state.scale) / 2;
 
-async function saveMyInfoAvatarBgColor(client, userId, bgColor) {
-  const color = normalizeAvatarBgColor(bgColor);
-  const { error: profileError } = await client
-    .from("profiles")
-    .update({ avatar_bg_color: color })
-    .eq("id", userId);
-  if (profileError) throw profileError;
-
-  const { error: feedError } = await client
-    .from("feed_posts")
-    .update({ author_avatar_bg: color })
-    .eq("owner_id", userId);
-  if (feedError) throw feedError;
+  imageEl.src = objectUrl;
+  zoomInput.min = String(state.minScale);
+  zoomInput.max = String(Math.max(state.minScale + 2, state.minScale * 3));
+  zoomInput.step = "0.01";
+  zoomInput.value = String(state.scale);
+  syncMyInfoAvatarCropPreview();
+  openMyInfoAvatarCropModal();
 }
 
 function validateMyInfoPassword(password = "") {
@@ -314,28 +243,6 @@ function matchesSongsQuery(item, query) {
     return `${getChosung(title)}${getChosung(artist)}`.includes(q.replace(/\s+/g, ""));
   }
   return title.includes(q) || artist.includes(q) || key.includes(q) || merged.includes(q);
-}
-
-function getVaultLabel(vault = "") {
-  const v = String(vault || "").toLowerCase();
-  if (v === "high") return "고등부";
-  if (v === "middle") return "중등부";
-  return "기타";
-}
-
-function normalizeVaultKey(vault = "") {
-  const v = String(vault || "").toLowerCase();
-  if (v === "high" || v === "middle" || v === "all") return v;
-  return "all";
-}
-
-function getRoleLabel(role = "") {
-  const value = String(role || "").toLowerCase();
-  if (value === "admin") return "관리자";
-  if (value === "high") return "고등부";
-  if (value === "middle") return "중등부";
-  if (value === "all") return "기타";
-  return "-";
 }
 
 function getStoredTheme() {
@@ -413,8 +320,7 @@ function setGuestMode() {
   $("#myInfoPageTitle").textContent = "MY";
   $("#myInfoPackagesTitle").textContent = "나의 악보";
   document.title = "MY";
-  setMyInfoAvatar("", "guest", "#eef3ff");
-  setMyInfoAvatarBgPreview("", "guest", "#eef3ff");
+  setMyInfoAvatar("", "guest");
   setMyInfoSummary("-", "-");
   infoForm?.classList.add("hidden");
   guestActions?.classList.remove("hidden");
@@ -535,6 +441,89 @@ async function renderSongs(userId, query = "") {
   });
 }
 
+async function saveProfileImage(client, userId, file) {
+  const extension = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const filePath = `${userId}/profile-${Date.now()}.${extension}`;
+  const { error: uploadError } = await client.storage
+    .from("score-files")
+    .upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || "image/jpeg",
+    });
+  if (uploadError) throw uploadError;
+
+  const { data } = client.storage.from("score-files").getPublicUrl(filePath);
+  const imageUrl = String(data?.publicUrl || "").trim();
+  if (!imageUrl) throw new Error("프로필 이미지 URL을 만들지 못했습니다.");
+
+  const { error: profileError } = await client
+    .from("profiles")
+    .update({ avatar_image_url: imageUrl })
+    .eq("id", userId);
+  if (profileError) throw profileError;
+
+  const { error: feedError } = await client
+    .from("feed_posts")
+    .update({ author_avatar_image_url: imageUrl })
+    .eq("owner_id", userId);
+  if (feedError) throw feedError;
+
+  return imageUrl;
+}
+
+function bindMyInfoAvatarCropper(onSave) {
+  const stage = $("#myInfoAvatarCropStage");
+  const zoomInput = $("#myInfoAvatarCropZoom");
+  const saveBtn = $("#myInfoAvatarCropSave");
+
+  document.querySelectorAll("[data-avatar-crop-close]").forEach((node) => {
+    node.addEventListener("click", () => {
+      closeMyInfoAvatarCropModal();
+      cleanupMyInfoAvatarCropState();
+    });
+  });
+
+  zoomInput?.addEventListener("input", (event) => {
+    updateMyInfoAvatarCropScale(event.currentTarget?.value);
+  });
+
+  stage?.addEventListener("pointerdown", (event) => {
+    if (!myInfoAvatarCropState.image) return;
+    myInfoAvatarCropState.dragging = true;
+    myInfoAvatarCropState.pointerId = event.pointerId;
+    myInfoAvatarCropState.dragStartX = event.clientX;
+    myInfoAvatarCropState.dragStartY = event.clientY;
+    myInfoAvatarCropState.dragOriginX = myInfoAvatarCropState.offsetX;
+    myInfoAvatarCropState.dragOriginY = myInfoAvatarCropState.offsetY;
+    stage.setPointerCapture(event.pointerId);
+  });
+
+  stage?.addEventListener("pointermove", (event) => {
+    if (!myInfoAvatarCropState.dragging || myInfoAvatarCropState.pointerId !== event.pointerId) return;
+    myInfoAvatarCropState.offsetX = myInfoAvatarCropState.dragOriginX + (event.clientX - myInfoAvatarCropState.dragStartX);
+    myInfoAvatarCropState.offsetY = myInfoAvatarCropState.dragOriginY + (event.clientY - myInfoAvatarCropState.dragStartY);
+    syncMyInfoAvatarCropPreview();
+  });
+
+  const stopDrag = (event) => {
+    if (myInfoAvatarCropState.pointerId !== event.pointerId) return;
+    myInfoAvatarCropState.dragging = false;
+    myInfoAvatarCropState.pointerId = null;
+    if (stage.hasPointerCapture?.(event.pointerId)) {
+      stage.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  stage?.addEventListener("pointerup", stopDrag);
+  stage?.addEventListener("pointercancel", stopDrag);
+
+  saveBtn?.addEventListener("click", async () => {
+    if (myInfoAvatarUploading || !myInfoAvatarCropState.file) return;
+    await onSave();
+  });
+}
+
 async function init() {
   applyUiTheme(getStoredTheme());
   $("#btnThemeToggle")?.addEventListener("click", () => {
@@ -567,8 +556,7 @@ async function init() {
   );
   const email = String(session.user?.email || "-");
   const userId = String(session.user?.id || "");
-  let avatarEmoji = "";
-  let avatarBgColor = "#eef3ff";
+  let avatarImageUrl = "";
   const pageTitle = nickname && nickname !== "-" ? `${nickname}님의 정보` : "나의 정보";
   const packagesTitle = nickname && nickname !== "-" ? `${nickname}님의 악보` : "나의 악보";
 
@@ -580,93 +568,51 @@ async function init() {
   try {
     const { data: profile } = await client
       .from("profiles")
-      .select("avatar_emoji, avatar_bg_color")
+      .select("avatar_image_url")
       .eq("id", session.user.id)
       .maybeSingle();
-    avatarEmoji = String(profile?.avatar_emoji || "").trim();
-    avatarBgColor = normalizeAvatarBgColor(profile?.avatar_bg_color || "#eef3ff");
+    avatarImageUrl = String(profile?.avatar_image_url || "").trim();
   } catch {}
 
   const getAvatarSeed = () => userId || nickname || email;
-  const handleAvatarSelect = async (nextEmoji) => {
-    if (myInfoAvatarUpdating) return;
-    myInfoAvatarUpdating = true;
+  setMyInfoAvatar(avatarImageUrl, getAvatarSeed());
+
+  bindMyInfoAvatarCropper(async () => {
+    myInfoAvatarUploading = true;
+    setMyInfoStatus("프로필 사진 업로드 중...");
     try {
-      await saveMyInfoAvatarEmoji(client, userId, nextEmoji);
-      avatarEmoji = nextEmoji;
-      setMyInfoAvatar(avatarEmoji, getAvatarSeed(), avatarBgColor);
-      setMyInfoAvatarBgPreview(avatarEmoji, getAvatarSeed(), avatarBgColor);
-      setMyInfoStatus("프로필 이모지가 저장되었습니다.");
-      setMyInfoEmojiModal(false);
-    } catch {
-      setMyInfoStatus("프로필 이모지를 저장하지 못했습니다.", true);
+      const blob = await createMyInfoAvatarCroppedBlob();
+      const uploadFile = new File([blob], `profile-${Date.now()}.jpg`, { type: "image/jpeg" });
+      avatarImageUrl = await saveProfileImage(client, userId, uploadFile);
+      setMyInfoAvatar(avatarImageUrl, getAvatarSeed());
+      setMyInfoStatus("프로필 사진이 저장되었습니다.");
+      closeMyInfoAvatarCropModal();
+      cleanupMyInfoAvatarCropState();
+    } catch (error) {
+      console.error(error);
+      setMyInfoStatus("프로필 사진을 저장하지 못했습니다.", true);
     } finally {
-      myInfoAvatarUpdating = false;
+      myInfoAvatarUploading = false;
     }
-  };
-  const applyAvatar = (emoji = avatarEmoji) => {
-    avatarEmoji = String(emoji || "").trim();
-    setMyInfoAvatar(avatarEmoji, getAvatarSeed(), avatarBgColor);
-    setMyInfoAvatarBgPreview(avatarEmoji, getAvatarSeed(), avatarBgColor);
-    renderMyInfoEmojiPicker(getMyInfoAvatarValue(avatarEmoji, getAvatarSeed()), handleAvatarSelect);
-  };
-  applyAvatar(avatarEmoji);
-  myInfoAvatarBgColorDraft = avatarBgColor;
+  });
 
   $("#myInfoAvatarButton")?.addEventListener("click", () => {
-    renderMyInfoEmojiPicker(getMyInfoAvatarValue(avatarEmoji, getAvatarSeed()), handleAvatarSelect);
-    myInfoAvatarBgColorDraft = avatarBgColor;
-    setMyInfoEmojiTab("emoji");
-    setMyInfoAvatarBgPreview(avatarEmoji, getAvatarSeed(), avatarBgColor);
-    setMyInfoEmojiModal(true);
+    $("#myInfoAvatarInput")?.click();
   });
 
-  $("#myInfoEmojiTab")?.addEventListener("click", () => {
-    setMyInfoEmojiTab("emoji");
-  });
-  $("#myInfoAvatarBgTab")?.addEventListener("click", () => {
-    myInfoAvatarBgColorDraft = avatarBgColor;
-    setMyInfoAvatarBgPreview(avatarEmoji, getAvatarSeed(), myInfoAvatarBgColorDraft);
-    setMyInfoEmojiTab("bg");
-    drawMyInfoAvatarBgWheel();
-  });
-
-  $("#myInfoAvatarBgWheel")?.addEventListener("pointerdown", (event) => {
-    myInfoAvatarBgDragging = true;
-    event.currentTarget?.setPointerCapture?.(event.pointerId);
-    handleMyInfoAvatarBgPointer(event, avatarEmoji, getAvatarSeed());
-  });
-  $("#myInfoAvatarBgWheel")?.addEventListener("pointermove", (event) => {
-    if (!myInfoAvatarBgDragging) return;
-    handleMyInfoAvatarBgPointer(event, avatarEmoji, getAvatarSeed());
-  });
-  $("#myInfoAvatarBgWheel")?.addEventListener("pointerup", () => {
-    myInfoAvatarBgDragging = false;
-  });
-  $("#myInfoAvatarBgWheel")?.addEventListener("pointerleave", () => {
-    myInfoAvatarBgDragging = false;
-  });
-
-  $("#myInfoAvatarBgSaveBtn")?.addEventListener("click", async () => {
-    if (myInfoAvatarBgUpdating) return;
-    myInfoAvatarBgUpdating = true;
-    const nextColor = normalizeAvatarBgColor(myInfoAvatarBgColorDraft || avatarBgColor);
+  $("#myInfoAvatarInput")?.addEventListener("change", async (event) => {
+    const input = event.currentTarget;
+    const file = input?.files?.[0];
+    if (!file || myInfoAvatarUploading) return;
     try {
-      await saveMyInfoAvatarBgColor(client, userId, nextColor);
-      avatarBgColor = nextColor;
-      setMyInfoAvatar(avatarEmoji, getAvatarSeed(), avatarBgColor);
-      setMyInfoAvatarBgPreview(avatarEmoji, getAvatarSeed(), avatarBgColor);
-      setMyInfoStatus("프로필 배경색이 저장되었습니다.");
-      setMyInfoEmojiModal(false);
-    } catch {
-      setMyInfoStatus("프로필 배경색을 저장하지 못했습니다.", true);
+      await openMyInfoAvatarCropper(file);
+      setMyInfoStatus("");
+    } catch (error) {
+      console.error(error);
+      setMyInfoStatus("프로필 사진을 불러오지 못했습니다.", true);
     } finally {
-      myInfoAvatarBgUpdating = false;
+      if (input) input.value = "";
     }
-  });
-
-  document.querySelectorAll("[data-myinfo-emoji-close]").forEach((node) => {
-    node.addEventListener("click", () => setMyInfoEmojiModal(false));
   });
 
   $("#btnMyInfoChangePassword")?.addEventListener("click", async () => {

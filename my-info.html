@@ -29,7 +29,8 @@
   <main class="container">
     <div class="myinfo-profile-summary">
       <div class="myinfo-avatar-wrap">
-        <button id="myInfoAvatarButton" class="myinfo-avatar" type="button" aria-label="프로필 이모지 변경">🐶</button>
+        <button id="myInfoAvatarButton" class="myinfo-avatar" type="button" aria-label="프로필 사진 변경">🐶</button>
+        <input id="myInfoAvatarInput" class="hidden" type="file" accept="image/*" />
       </div>
       <strong id="myInfoSummaryNickname" class="myinfo-summary-nickname">-</strong>
       <div id="myInfoSummaryEmail" class="myinfo-summary-email">-</div>
@@ -67,33 +68,6 @@
     </section>
   </main>
 
-  <div id="myInfoEmojiModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="myInfoEmojiTab">
-    <div class="modal-backdrop" data-myinfo-emoji-close="1"></div>
-    <div class="modal-card package-modal-card">
-      <div class="modal-head">
-        <div class="myinfo-emoji-head">
-          <button id="myInfoEmojiTab" class="myinfo-emoji-head-tab is-active" type="button">프로필 이모지</button>
-          <button id="myInfoAvatarBgTab" class="myinfo-emoji-head-tab" type="button">배경색</button>
-        </div>
-        <button class="btn ghost" type="button" data-myinfo-emoji-close="1">닫기</button>
-      </div>
-      <div class="modal-body myinfo-emoji-modal-body">
-        <div id="myInfoEmojiPicker" class="myinfo-emoji-picker" role="listbox" aria-label="이모지 선택"></div>
-        <div id="myInfoAvatarBgPane" class="myinfo-avatar-bg-pane hidden">
-          <div class="myinfo-avatar-bg-preview-wrap">
-            <button id="myInfoAvatarBgPreview" class="myinfo-avatar myinfo-avatar-preview" type="button" aria-label="배경색 미리보기">🐶</button>
-          </div>
-          <label class="myinfo-avatar-bg-label" for="myInfoAvatarBgWheel">배경색 선택</label>
-          <div class="myinfo-avatar-bg-wheel-wrap">
-            <canvas id="myInfoAvatarBgWheel" class="myinfo-avatar-bg-wheel" width="320" height="320" aria-label="배경색 휠"></canvas>
-            <span id="myInfoAvatarBgMarker" class="myinfo-avatar-bg-marker" aria-hidden="true"></span>
-          </div>
-          <button id="myInfoAvatarBgSaveBtn" class="btn primary" type="button">저장</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <section class="guest-page-card">
     <div id="myInfoGuestActions" class="myinfo-guest-actions hidden">
       <p class="myinfo-guest-copy">피드, 찜하기, 악보 추가는 로그인 후 사용할 수 있습니다.</p>
@@ -103,6 +77,31 @@
       </div>
     </div>
   </section>
+
+  <div id="myInfoAvatarCropModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="myInfoAvatarCropTitle">
+    <div class="modal-backdrop" data-avatar-crop-close="1"></div>
+    <div class="modal-card myinfo-avatar-crop-card">
+      <div class="modal-head">
+        <strong id="myInfoAvatarCropTitle" class="m-title">프로필 사진</strong>
+        <button class="btn" type="button" data-avatar-crop-close="1">닫기</button>
+      </div>
+      <div class="modal-body myinfo-avatar-crop-body">
+        <div id="myInfoAvatarCropStage" class="myinfo-avatar-crop-stage">
+          <img id="myInfoAvatarCropImage" class="myinfo-avatar-crop-image hidden" alt="" />
+          <div class="myinfo-avatar-crop-ring" aria-hidden="true"></div>
+        </div>
+        <label class="myinfo-avatar-crop-range" for="myInfoAvatarCropZoom">
+          <span>확대</span>
+          <input id="myInfoAvatarCropZoom" type="range" min="1" max="3" step="0.01" value="1" />
+        </label>
+        <p class="myinfo-avatar-crop-help">사진을 드래그해서 위치를 맞출 수 있어요.</p>
+      </div>
+      <div class="modal-foot">
+        <button id="myInfoAvatarCropCancel" class="btn" type="button" data-avatar-crop-close="1">취소</button>
+        <button id="myInfoAvatarCropSave" class="btn primary" type="button">저장</button>
+      </div>
+    </div>
+  </div>
 
   <nav class="mobile-tabbar" aria-label="모바일 네비게이션">
     <a class="mobile-tabbar-item" href="./index.html">

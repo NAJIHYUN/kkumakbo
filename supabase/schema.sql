@@ -9,6 +9,7 @@ create table if not exists public.profiles (
   email text,
   approved boolean not null default false,
   role text not null default 'all' check (role in ('high','middle','all','admin')),
+  avatar_image_url text not null default '',
   avatar_emoji text not null default '',
   avatar_bg_color text not null default '#eef3ff',
   created_at timestamptz not null default now()
@@ -54,6 +55,9 @@ add column if not exists avatar_emoji text not null default '';
 
 alter table public.profiles
 add column if not exists avatar_bg_color text not null default '#eef3ff';
+
+alter table public.profiles
+add column if not exists avatar_image_url text not null default '';
 
 -- 2) package links by user (vault)
 create table if not exists public.packages (
@@ -140,6 +144,7 @@ create table if not exists public.feed_posts (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users(id) on delete cascade,
   author_nickname text not null default '',
+  author_avatar_image_url text not null default '',
   author_avatar text not null default '',
   author_avatar_bg text not null default '#eef3ff',
   post_type text not null check (post_type in ('notice','new-song','praise-recommend')),
@@ -209,6 +214,9 @@ add column if not exists author_avatar text not null default '';
 
 alter table public.feed_posts
 add column if not exists author_avatar_bg text not null default '#eef3ff';
+
+alter table public.feed_posts
+add column if not exists author_avatar_image_url text not null default '';
 
 alter table public.feed_posts
 add column if not exists link_title text not null default '';
