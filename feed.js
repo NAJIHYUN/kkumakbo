@@ -19,6 +19,7 @@ let feedWriteLinkThumbnailUrl = "";
 let feedLinkPreviewToken = 0;
 let feedScoreLibrary = [];
 let feedScoreLibraryLoaded = false;
+let feedCurrentUserProfileSyncPromise = null;
 const FEED_DRAFT_STORAGE_KEY = "kkumakbo.feedDraft";
 
 function $(selector) {
@@ -160,10 +161,11 @@ async function getFeedContext() {
   const user = await getSessionUser();
   if (!user) return { user: null, nickname: "", role: "" };
   const profile = await getProfile(user.id);
+  const resolvedRole = String(profile?.role || user.user_metadata?.role || "").toLowerCase();
   return {
     user,
     nickname: profile?.nickname || user.user_metadata?.nickname || user.email?.split("@")[0] || "사용자",
-    role: String(profile?.role || "").toLowerCase(),
+    role: resolvedRole,
     avatarImageUrl: String(profile?.avatar_image_url || "").trim(),
     avatarEmoji: String(profile?.avatar_emoji || "").trim(),
     avatarBgColor: normalizeAvatarBgColor(profile?.avatar_bg_color || "#eef3ff"),
@@ -255,6 +257,7 @@ function createFeedPostElement(post) {
   const article = document.createElement("article");
   article.className = "feed-post feed-post-user";
   article.dataset.feedPostId = post.id;
+  article.dataset.feedPostOwnerId = post.ownerId || "";
   const typeInfo = FEED_TYPE_MAP[post.type] || FEED_TYPE_MAP["new-song"];
   article.innerHTML = `
     <div class="feed-post-head">
@@ -266,9 +269,10 @@ function createFeedPostElement(post) {
           <span class="feed-post-sub">${escapeHtml(formatFeedTime(post.createdAt))}</span>
         </div>
       </div>
+      ${post.canDelete ? '<button class="feed-post-delete" type="button" aria-label="내 글 삭제">삭제</button>' : ""}
     </div>
     <h2 class="feed-post-title">${escapeHtml(post.title || "제목 없는 글")}</h2>
-    <p class="feed-post-copy">${renderFeedContentMarkup(post.content)}</p>
+    ${renderFeedContentMarkup(post.content)}
     ${post.imageUrl ? `<img class="feed-post-image" alt="" src="${escapeHtml(post.imageUrl)}" />` : ""}
     ${post.linkUrl ? `<a class="feed-post-link" href="${escapeHtml(post.linkUrl)}">${(post.linkThumbnailUrl || getYoutubeThumbnailUrl(post.linkUrl)) ? `<img class="feed-post-link-thumb" alt="" src="${escapeHtml(post.linkThumbnailUrl || getYoutubeThumbnailUrl(post.linkUrl))}" />` : ""}<span class="feed-post-link-url">${escapeHtml(post.linkUrl)}</span></a>` : ""}
   `;
@@ -328,16 +332,93 @@ async function loadFeedPosts() {
   }));
 }
 
+async function syncCurrentUserFeedProfile(context) {
+  if (!context?.user?.id || feedCurrentUserProfileSyncPromise) return feedCurrentUserProfileSyncPromise;
+  const client = getClient();
+  if (!client) return null;
+  const payload = {
+    author_nickname: context.nickname,
+    author_avatar_image_url: context.avatarImageUrl,
+    author_avatar: context.avatarEmoji,
+    author_avatar_bg: context.avatarBgColor,
+  };
+  feedCurrentUserProfileSyncPromise = client
+    .from("feed_posts")
+    .update(payload)
+    .eq("owner_id", context.user.id)
+    .then(({ error }) => {
+      if (error) {
+        console.warn("feed profile sync skipped:", error);
+      }
+    })
+    .catch((error) => {
+      console.warn("feed profile sync skipped:", error);
+    })
+    .finally(() => {
+      feedCurrentUserProfileSyncPromise = null;
+    });
+  return feedCurrentUserProfileSyncPromise;
+}
+
 async function renderFeedPosts() {
   const list = $("#feedList");
   if (!list) return;
   list.innerHTML = "";
-  const items = await loadFeedPosts();
-  items.forEach((item) => {
+  const [items, context] = await Promise.all([loadFeedPosts(), getFeedContext()]);
+  const hydratedItems = items.map((item) => {
+    if (!context?.user?.id || item.ownerId !== context.user.id) return item;
+    return {
+      ...item,
+      author: context.nickname || item.author,
+      authorAvatarImageUrl: context.avatarImageUrl,
+      authorAvatar: context.avatarEmoji || item.authorAvatar,
+      authorAvatarBg: context.avatarBgColor || item.authorAvatarBg,
+      canDelete: true,
+    };
+  });
+  const finalItems = hydratedItems.map((item) => ({
+    ...item,
+    canDelete: Boolean(item.canDelete || (context?.user?.id && item.ownerId === context.user.id)),
+  }));
+  if (context?.user?.id) {
+    syncCurrentUserFeedProfile(context).catch(() => {});
+  }
+  finalItems.forEach((item) => {
     const article = createFeedPostElement(item);
     list.appendChild(article);
     hydrateFeedLinkCard(item, article).catch(() => {});
   });
+}
+
+async function deleteFeedPost(postId, ownerId, article) {
+  const context = await getFeedContext();
+  if (!context?.user?.id) {
+    setFeedWriteStatus("로그인 후 삭제할 수 있습니다.", true);
+    return;
+  }
+  if (!postId || ownerId !== context.user.id) {
+    setFeedWriteStatus("본인이 작성한 글만 삭제할 수 있습니다.", true);
+    return;
+  }
+  if (!window.confirm("이 글을 삭제할까요?")) return;
+  const client = getClient();
+  if (!client) {
+    setFeedWriteStatus("Supabase 연결을 확인해 주세요.", true);
+    return;
+  }
+  const deleteBtn = article?.querySelector(".feed-post-delete");
+  if (deleteBtn) deleteBtn.disabled = true;
+  const { error } = await client
+    .from("feed_posts")
+    .delete()
+    .eq("id", postId)
+    .eq("owner_id", context.user.id);
+  if (error) {
+    if (deleteBtn) deleteBtn.disabled = false;
+    setFeedWriteStatus("글을 삭제하지 못했습니다.", true);
+    return;
+  }
+  article?.remove();
 }
 
 function syncFeedTypeUi() {
@@ -989,6 +1070,17 @@ function bindFeedCompose() {
     if (!editor || !trigger || editor.classList.contains("hidden")) return;
     if (editor.contains(event.target) || trigger.contains(event.target)) return;
     setFeedScoreEditor(false);
+  });
+
+  document.addEventListener("click", (event) => {
+    const button = event.target instanceof HTMLElement ? event.target.closest(".feed-post-delete") : null;
+    if (!button) return;
+    const article = button.closest(".feed-post");
+    if (!article) return;
+    deleteFeedPost(article.dataset.feedPostId || "", article.dataset.feedPostOwnerId || "", article).catch(() => {
+      setFeedWriteStatus("글을 삭제하지 못했습니다.", true);
+      button.disabled = false;
+    });
   });
 }
 
