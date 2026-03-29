@@ -16,6 +16,7 @@ let feedWriteImageDataUrl = "";
 let feedWriteLinkUrl = "";
 let feedWriteLinkTitle = "";
 let feedWriteLinkThumbnailUrl = "";
+let feedWriteScores = [];
 let feedLinkPreviewToken = 0;
 let feedScoreLibrary = [];
 let feedScoreLibraryLoaded = false;
@@ -217,6 +218,44 @@ function parseFeedScoreLine(line = "") {
   };
 }
 
+function normalizeFeedScoreEntry(entry = {}) {
+  return {
+    title: String(entry.title || "").trim(),
+    artist: String(entry.artist || "").trim(),
+    fileUrl: String(entry.fileUrl || entry.url || "").trim(),
+  };
+}
+
+function buildFeedScoreBlock(score = {}) {
+  const normalized = normalizeFeedScoreEntry(score);
+  const meta = [normalized.title, normalized.artist].filter(Boolean).join(" / ");
+  return meta && normalized.fileUrl ? `[악보] ${meta}\n${normalized.fileUrl}` : "";
+}
+
+function extractFeedScoresFromContent(content = "") {
+  const lines = String(content || "").split("\n");
+  const kept = [];
+  const scores = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const score = parseFeedScoreLine(lines[i]);
+    const nextLine = String(lines[i + 1] || "").trim();
+    if (score && /^https?:\/\//i.test(nextLine)) {
+      scores.push(normalizeFeedScoreEntry({ ...score, fileUrl: nextLine }));
+      i += 1;
+      continue;
+    }
+    kept.push(lines[i]);
+  }
+  const cleanContent = kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return { content: cleanContent, scores };
+}
+
+function composeFeedPostContent(baseContent = "", scores = []) {
+  const text = String(baseContent || "").trim();
+  const blocks = scores.map((score) => buildFeedScoreBlock(score)).filter(Boolean);
+  return [text, ...blocks].filter(Boolean).join("\n\n");
+}
+
 function renderFeedContentMarkup(content = "") {
   const lines = String(content || "").split("\n");
   const blocks = [];
@@ -269,7 +308,7 @@ function createFeedPostElement(post) {
           <span class="feed-post-sub">${escapeHtml(formatFeedTime(post.createdAt))}</span>
         </div>
       </div>
-      ${post.canDelete ? '<button class="feed-post-delete" type="button" aria-label="내 글 삭제">삭제</button>' : ""}
+      ${post.canDelete ? '<button class="btn feed-post-delete" type="button" aria-label="내 글 삭제">삭제</button>' : ""}
     </div>
     <h2 class="feed-post-title">${escapeHtml(post.title || "제목 없는 글")}</h2>
     ${renderFeedContentMarkup(post.content)}
@@ -484,6 +523,29 @@ function renderFeedLinkPreview(url = "", title = "", linkUrl = "") {
   `;
 }
 
+function renderFeedScorePreviewList() {
+  const list = $("#feedScorePreviewList");
+  if (!list) return;
+  if (!feedWriteScores.length) {
+    list.classList.add("hidden");
+    list.innerHTML = "";
+    return;
+  }
+  list.classList.remove("hidden");
+  list.innerHTML = feedWriteScores.map((score, index) => `
+    <div class="feed-score-preview-item">
+      <a class="feed-post-score" href="${escapeHtml(score.fileUrl)}" target="_blank" rel="noreferrer">
+        <span class="feed-post-score-label">악보</span>
+        <span class="feed-post-score-meta">
+          <strong class="feed-post-score-title">${escapeHtml(score.title || "이름 없는 악보")}</strong>
+          ${score.artist ? `<span class="feed-post-score-artist">${escapeHtml(score.artist)}</span>` : ""}
+        </span>
+      </a>
+      <button class="btn feed-score-preview-remove" type="button" data-score-index="${index}">삭제</button>
+    </div>
+  `).join("");
+}
+
 function setFeedScoreStatus(message = "", isError = false) {
   const status = $("#feedScoreStatus");
   if (!status) return;
@@ -611,13 +673,17 @@ function insertTextAtCursor(input, text) {
 }
 
 function insertSelectedScoreLink(song) {
-  const textarea = $("#feedWriteText");
-  if (!textarea || !song?.fileUrl) return;
-  const meta = [song.title, song.artist].filter(Boolean).join(" / ");
-  const prefix = textarea.value && !textarea.value.endsWith("\n") ? "\n\n" : "";
-  insertTextAtCursor(textarea, `${prefix}[악보] ${meta}\n${song.fileUrl}`);
+  const normalized = normalizeFeedScoreEntry(song);
+  if (!normalized.title || !normalized.fileUrl) return;
+  const exists = feedWriteScores.some((item) => item.fileUrl === normalized.fileUrl && item.title === normalized.title);
+  if (exists) {
+    setFeedScoreStatus("이미 추가한 악보예요.", true);
+    return;
+  }
+  feedWriteScores = [...feedWriteScores, normalized];
+  renderFeedScorePreviewList();
   setFeedScoreEditor(false);
-  setFeedWriteStatus("악보 링크를 본문에 넣었어요.");
+  setFeedWriteStatus("악보를 글 아래에 추가했어요.");
 }
 
 function getFeedDraftPayload() {
@@ -625,6 +691,7 @@ function getFeedDraftPayload() {
     type: feedWriteType,
     title: String($("#feedWriteSubject")?.value || "").trim(),
     content: String($("#feedWriteText")?.value || "").trim(),
+    scores: feedWriteScores,
     imageUrl: feedWriteImageDataUrl,
     linkUrl: feedWriteLinkUrl,
     linkTitle: feedWriteLinkTitle,
@@ -638,6 +705,7 @@ function hasFeedDraftChanges() {
     draft.type ||
       draft.title ||
       draft.content ||
+      (Array.isArray(draft.scores) && draft.scores.length) ||
       draft.imageUrl ||
       draft.linkUrl ||
       draft.linkTitle ||
@@ -675,6 +743,7 @@ function resetFeedComposeState() {
   feedWriteLinkUrl = "";
   feedWriteLinkTitle = "";
   feedWriteLinkThumbnailUrl = "";
+  feedWriteScores = [];
   const subjectInput = $("#feedWriteSubject");
   const textarea = $("#feedWriteText");
   const imageInput = $("#feedImageInput");
@@ -686,6 +755,7 @@ function resetFeedComposeState() {
   if (linkInput) linkInput.value = "";
   if (scoreInput) scoreInput.value = "";
   renderFeedImagePreview();
+  renderFeedScorePreviewList();
   renderFeedLinkPreview("", "", "");
   setFeedLinkEditor(false);
   setFeedScoreEditor(false);
@@ -698,18 +768,23 @@ function resetFeedComposeState() {
 
 function applyFeedDraft(draft) {
   if (!draft) return;
+  const extracted = extractFeedScoresFromContent(draft.content || "");
   feedWriteType = String(draft.type || "");
   feedWriteImageDataUrl = String(draft.imageUrl || "");
   feedWriteLinkUrl = String(draft.linkUrl || "");
   feedWriteLinkTitle = String(draft.linkTitle || "");
   feedWriteLinkThumbnailUrl = String(draft.linkThumbnailUrl || "");
+  feedWriteScores = Array.isArray(draft.scores) && draft.scores.length
+    ? draft.scores.map((score) => normalizeFeedScoreEntry(score)).filter((score) => score.title && score.fileUrl)
+    : extracted.scores;
   const subjectInput = $("#feedWriteSubject");
   const textarea = $("#feedWriteText");
   const linkInput = $("#feedLinkInput");
   if (subjectInput) subjectInput.value = String(draft.title || "");
-  if (textarea) textarea.value = String(draft.content || "");
+  if (textarea) textarea.value = extracted.content;
   if (linkInput) linkInput.value = feedWriteLinkUrl;
   renderFeedImagePreview();
+  renderFeedScorePreviewList();
   renderFeedLinkPreview(feedWriteLinkThumbnailUrl, feedWriteLinkTitle, feedWriteLinkUrl);
   syncFeedTypeUi();
   syncFeedWriteSubmitState();
@@ -828,7 +903,7 @@ async function submitFeedPost() {
   if (!subjectInput || !textarea || !submitBtn) return;
 
   const title = String(subjectInput.value || "").trim();
-  const content = String(textarea.value || "").trim();
+  const content = composeFeedPostContent(String(textarea.value || "").trim(), feedWriteScores);
   if (!feedWriteType) {
     setFeedWriteStatus("분류를 선택해 주세요.", true);
     return;
@@ -1070,6 +1145,15 @@ function bindFeedCompose() {
     if (!editor || !trigger || editor.classList.contains("hidden")) return;
     if (editor.contains(event.target) || trigger.contains(event.target)) return;
     setFeedScoreEditor(false);
+  });
+
+  document.addEventListener("click", (event) => {
+    const button = event.target instanceof HTMLElement ? event.target.closest(".feed-score-preview-remove") : null;
+    if (!button) return;
+    const index = Number(button.dataset.scoreIndex || "-1");
+    if (index < 0 || index >= feedWriteScores.length) return;
+    feedWriteScores = feedWriteScores.filter((_, currentIndex) => currentIndex !== index);
+    renderFeedScorePreviewList();
   });
 
   document.addEventListener("click", (event) => {

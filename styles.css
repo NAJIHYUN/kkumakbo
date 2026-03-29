@@ -156,6 +156,18 @@ a{color:inherit}
 .feed-post-meta{
   min-width:0;
 }
+.btn.feed-post-delete{
+  margin-left:auto;
+  flex:0 0 auto;
+  min-height:auto;
+  border:none;
+  background:#ffeeee;
+  color:#d22030;
+  line-height:1;
+}
+.btn.feed-post-delete:disabled{
+  opacity:.45;
+}
 .feed-post-topline{
   display:flex;
   flex-wrap:nowrap;
@@ -215,7 +227,7 @@ a{color:inherit}
 .feed-post-score{
   display:block;
   margin-top:12px;
-  padding:14px;
+  padding:10px;
   border:1px solid #e5e8eb;
   border-radius:14px;
   background:#f9fafb;
@@ -453,6 +465,21 @@ a{color:inherit}
   max-height:240px;
   object-fit:cover;
   border-radius:18px;
+}
+.feed-score-preview-list{
+  display:grid;
+  gap:10px;
+  margin-top:14px;
+}
+.feed-score-preview-item{
+  display:grid;
+  gap:8px;
+}
+.feed-score-preview-item .feed-post-score{
+  margin-top:0;
+}
+.feed-score-preview-remove{
+  justify-self:end;
 }
 .feed-write-toolbar{
   display:flex;
