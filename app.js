@@ -325,7 +325,7 @@ function toggleSortMenu() {
   }
 }
 
-// 제목 옆 곡 수: 목록 페이지는 전체 곡 수, 찜 페이지는 찜한 곡 수
+// 제목 옆 곡 수: 목록 페이지는 전체 곡 수, 즐겨찾기 페이지는 즐겨찾기한 곡 수
 function updateSongCount() {
   const el = $("#songCount");
   if (!el) return;
@@ -447,8 +447,8 @@ function render() {
     const isFavorite = isFavoriteSong(song.id);
     favBtn.type = "button";
     favBtn.className = `smallbtn favorite-btn${isFavorite ? " is-favorite" : ""}`;
-    favBtn.title = isFavorite ? "좋아요 취소" : "좋아요";
-    favBtn.setAttribute("aria-label", isFavorite ? "좋아요 취소" : "좋아요");
+    favBtn.title = isFavorite ? "즐겨찾기 해제" : "즐겨찾기";
+    favBtn.setAttribute("aria-label", isFavorite ? "즐겨찾기 해제" : "즐겨찾기");
     favBtn.innerHTML = `
       <svg class="icon-action" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 21s-6.7-4.35-9.3-8.3C.4 9.27 1.62 5.2 5.42 4.22A5.4 5.4 0 0 1 12 6.36a5.4 5.4 0 0 1 6.58-2.14c3.8.98 5.02 5.05 2.72 8.48C18.7 16.65 12 21 12 21Z"></path>
@@ -456,7 +456,7 @@ function render() {
     `;
     favBtn.disabled = rowActionDisabled;
     favBtn.addEventListener("click", async () => {
-      const user = await requireLoggedInAction("찜하기는 로그인 후 사용할 수 있습니다.");
+      const user = await requireLoggedInAction("즐겨찾기는 로그인 후 사용할 수 있어요.");
       if (!user) return;
       toggleFavoriteSong(song.id);
     });
@@ -2840,7 +2840,6 @@ async function getCurrentUserNickname() {
     if (!session) return "";
     const nickname = String(
       session.user?.user_metadata?.nickname ||
-      session.user?.email?.split("@")[0] ||
       ""
     ).trim();
     return nickname;
@@ -2862,7 +2861,6 @@ async function initMyInfoModal() {
 
   const nickname = String(
     session.user?.user_metadata?.nickname ||
-    session.user?.email?.split("@")[0] ||
     "-"
   );
   state.myNickname = nickname;
@@ -3179,7 +3177,6 @@ async function init() {
         state.myUserId = userId;
         const nicknameFromSession = String(
           data?.session?.user?.user_metadata?.nickname ||
-          data?.session?.user?.email?.split("@")[0] ||
           ""
         ).trim();
         if (nicknameFromSession) state.myNickname = nicknameFromSession;

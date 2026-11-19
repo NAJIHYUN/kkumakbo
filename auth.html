@@ -7,70 +7,80 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>로그인</title>
+  <title>로그인 · 꿈꾸는교회 악보함</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔐</text></svg>">
+  <script src="./theme.js"></script>
   <link rel="stylesheet" href="./styles.css" />
-  <link rel="stylesheet" href="./apple.css?v=20261119-25" />
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="./supabase-config.js"></script>
   <script defer src="./supabase-client.js"></script>
-  <script defer src="./auth.js?v=20261119-1"></script>
+  <script defer src="./account.js?v=20261120-1"></script>
+  <script defer src="./auth.js?v=20261120-1"></script>
+  <link rel="stylesheet" href="./apple.css?v=20261120-2" />
 </head>
-<body class="auth-page">
-  <main class="auth-shell">
-    <section id="authIntro" class="auth-intro">
-      <h1 class="auth-intro-title"><span class="auth-brand-kkum">kkum</span><span class="auth-brand-akbo">akbo</span></h1>
+<body class="auth-page pin-auth-page">
+  <main class="pin-auth">
+    <header class="pin-auth-head">
+      <button id="btnAuthBack" class="pin-back" type="button" aria-label="뒤로">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"></path></svg>
+      </button>
+      <span class="pin-brand"><span class="auth-brand-kkum">kkum</span><span class="auth-brand-akbo">akbo</span></span>
+    </header>
+
+    <section class="pin-auth-body">
+      <h1 id="authTitle" class="pin-title">로그인</h1>
+      <p id="authDesc" class="pin-desc">닉네임을 입력해 주세요.</p>
+
+      <!-- 1단계: 닉네임 -->
+      <form id="stepNickname" class="pin-step" autocomplete="on" novalidate>
+        <input id="authNickname" class="input pin-nickname" type="text" name="username" autocomplete="username"
+               maxlength="10" placeholder="닉네임 (10자 이내)" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next" />
+        <p id="nicknameStatus" class="pin-status" role="status" aria-live="polite"></p>
+        <button id="btnNicknameNext" class="btn primary pin-next" type="submit">다음</button>
+      </form>
+
+      <!-- 2단계: 숫자 6자리 -->
+      <div id="stepPin" class="pin-step hidden">
+        <div id="pinDots" class="pin-dots" role="img" aria-label="비밀번호 0자리 입력됨">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <p id="authStatus" class="pin-status" role="status" aria-live="polite"></p>
+        <div class="pin-keypad" aria-label="숫자 키패드">
+          <button type="button" data-key="1">1</button>
+          <button type="button" data-key="2">2</button>
+          <button type="button" data-key="3">3</button>
+          <button type="button" data-key="4">4</button>
+          <button type="button" data-key="5">5</button>
+          <button type="button" data-key="6">6</button>
+          <button type="button" data-key="7">7</button>
+          <button type="button" data-key="8">8</button>
+          <button type="button" data-key="9">9</button>
+          <span aria-hidden="true"></span>
+          <button type="button" data-key="0">0</button>
+          <button type="button" data-key="back" aria-label="지우기">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h10a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 19 18H9l-5.5-6Z"></path><path d="m11.5 9.5 5 5m0-5-5 5"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 가입 완료 안내 -->
+      <div id="stepDone" class="pin-step hidden">
+        <p id="authNotice" class="pin-notice" role="status"></p>
+        <a class="btn primary pin-next" href="./index.html">악보 보러 가기</a>
+      </div>
     </section>
 
-    <section id="authStep" class="auth-step hidden">
-      <h1 class="auth-hero"><span class="auth-brand-kkum">kkum</span><span class="auth-brand-akbo">akbo</span></h1>
-      <div class="auth-nav-row">
-        <button id="btnBackIntro" class="auth-nav-link" type="button">← 처음으로</button>
-      </div>
-
-      <div id="authFields" class="auth-fields hidden">
-        <label id="lineNickname" class="auth-line">
-          <span>닉네임</span>
-          <input id="authNickname" class="auth-input" type="text" autocomplete="nickname" placeholder="닉네임" maxlength="9" />
-        </label>
-        <label id="lineEmail" class="auth-line">
-          <span>이메일</span>
-          <input id="authEmail" class="auth-input" type="email" autocomplete="email" placeholder="이메일" />
-        </label>
-        <label id="linePassword" class="auth-line">
-          <span>비밀번호</span>
-          <input id="authPassword" class="auth-input" type="password" autocomplete="current-password" placeholder="비밀번호" maxlength="15" />
-        </label>
-        <label id="linePasswordConfirm" class="auth-line">
-          <span>비밀번호 확인</span>
-          <input id="authPasswordConfirm" class="auth-input" type="password" autocomplete="new-password" placeholder="비밀번호 확인" maxlength="15" />
-        </label>
-      </div>
-
-      <p id="authSub" class="auth-sub">메일함을 확인해주세요!</p>
-
-      <div id="authModeActions" class="auth-mode-actions hidden">
-        <button id="btnSubmitSignIn" class="btn primary hidden" type="button">로그인</button>
-        <button id="btnSubmitSignUp" class="btn primary hidden" type="button">회원가입</button>
-        <a id="forgotPasswordLink" class="auth-forgot-link hidden" href="#">비밀번호를 잊으셨나요?</a>
-        <button id="btnSwitchMode" class="auth-switch-link hidden" type="button"></button>
-      </div>
-
-      <div id="authStatus" class="auth-status"></div>
-
+    <footer class="pin-auth-foot">
+      <button id="btnSwitchMode" class="pin-switch" type="button">처음이신가요? <strong>회원가입</strong></button>
       <details class="auth-contact-accordion">
-        <summary class="auth-contact-title">관리자 문의</summary>
+        <summary class="auth-contact-title">관리자 문의 (비밀번호를 잊었어요)</summary>
         <div class="auth-contact-body">
-          <textarea id="contactMessage" class="auth-contact-textarea" rows="4" placeholder="내용을 입력해 주세요."></textarea>
+          <textarea id="contactMessage" class="auth-contact-textarea" rows="3" placeholder="닉네임과 문의 내용을 적어주세요."></textarea>
           <button id="btnContactAdmin" class="btn auth-contact-btn" type="button">문의하기</button>
+          <p id="contactStatus" class="pin-contact-status" role="status"></p>
         </div>
       </details>
-    </section>
+    </footer>
   </main>
-
-  <footer id="introActions" class="auth-bottom-actions">
-    <button id="btnEnterSignIn" class="btn primary" type="button">로그인</button>
-    <button id="btnEnterSignUp" class="btn" type="button">회원가입</button>
-  </footer>
 </body>
 </html>

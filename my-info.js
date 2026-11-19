@@ -92,7 +92,10 @@ function setMyInfoSummary(nickname = "-", email = "-") {
   const nicknameEl = $("#myInfoSummaryNickname");
   const emailEl = $("#myInfoSummaryEmail");
   if (nicknameEl) nicknameEl.textContent = nickname || "-";
-  if (emailEl) emailEl.textContent = email || "-";
+  if (emailEl) {
+    emailEl.textContent = email || "";
+    emailEl.classList.toggle("hidden", !email);
+  }
 }
 
 async function syncMyInfoProfileRole(client, session) {
@@ -229,11 +232,9 @@ async function openMyInfoAvatarCropper(file) {
 }
 
 function validateMyInfoPassword(password = "") {
-  const value = String(password || "");
-  if (!value) return "새 비밀번호를 입력해 주세요.";
-  if (value.length < 5 || value.length > 15) return "비밀번호는 5~15자로 입력해 주세요.";
-  if (!/^[A-Za-z0-9!@#]+$/.test(value)) return "비밀번호는 영문/숫자/!@#만 사용할 수 있어요.";
-  return "";
+  // 비밀번호는 숫자 6자리 (account.js와 같은 규칙)
+  if (!String(password || "")) return "새 비밀번호 숫자 6자리를 입력해 주세요.";
+  return window.KkumAccount?.validatePin(password) || "";
 }
 
 function matchesSongsQuery(item, query) {
@@ -325,7 +326,7 @@ function setGuestMode() {
   $("#myInfoPackagesTitle").textContent = "나의 악보";
   document.title = "MY";
   setMyInfoAvatar("", "guest");
-  setMyInfoSummary("-", "-");
+  setMyInfoSummary("-", "");
   infoForm?.classList.add("hidden");
   guestActions?.classList.remove("hidden");
 
@@ -588,10 +589,11 @@ async function init() {
 
   const nickname = String(
     session.user?.user_metadata?.nickname ||
-    session.user?.email?.split("@")[0] ||
     "-"
   );
-  const email = String(session.user?.email || "-");
+  // 이메일은 수집하지 않음 (내부 전용 주소는 화면에 보이지 않게)
+  const rawEmail = String(session.user?.email || "");
+  const email = window.KkumAccount?.isInternalEmail(rawEmail) ? "" : rawEmail;
   const userId = String(session.user?.id || "");
   let avatarImageUrl = "";
   const pageTitle = nickname && nickname !== "-" ? `${nickname}님의 정보` : "나의 정보";

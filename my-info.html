@@ -14,9 +14,10 @@
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="./supabase-config.js?v=20260324-2"></script>
   <script defer src="./supabase-client.js?v=20260324-2"></script>
-  <script defer src="./my-info.js?v=20261119-1"></script>
-  <script defer src="./nav.js?v=20261119-1"></script>
-  <link rel="stylesheet" href="./apple.css?v=20261119-25" />
+  <script defer src="./account.js?v=20261120-1"></script>
+  <script defer src="./my-info.js?v=20261120-1"></script>
+  <script defer src="./nav.js?v=20261120-1"></script>
+  <link rel="stylesheet" href="./apple.css?v=20261120-2" />
 </head>
 <body data-my-info="1">
   <header class="topbar">
@@ -24,8 +25,8 @@
       <strong id="myInfoPageTitle">나의 정보</strong>
     </div>
     <nav class="app-nav" aria-label="주요 메뉴">
-      <a class="app-nav-item" href="./index.html" data-nav="index">악보</a>
-      <a class="app-nav-item" href="./favorite.html" data-nav="favorite">찜</a>
+      <a class="app-nav-item" href="./index.html" data-nav="index">홈</a>
+      <a class="app-nav-item" href="./favorite.html" data-nav="favorite">즐겨찾기</a>
       <a class="app-nav-item hidden" href="./review.html" data-nav="review" data-admin-only>승인 대기<span class="app-nav-count hidden" data-pending-count></span></a>
       <a class="app-nav-item" href="./my-info.html" data-nav="my-info">MY</a>
     </nav>
@@ -44,11 +45,11 @@
       <div class="package-form myinfo-form">
         <label id="myInfoLinePassword" class="package-name-line" for="myInfoNewPassword">
           <span>새 비밀번호</span>
-          <input id="myInfoNewPassword" class="input package-name-input" type="password" placeholder="5~15자 (영문/숫자/!@#)" />
+          <input id="myInfoNewPassword" class="input package-name-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="숫자 6자리" />
         </label>
         <label id="myInfoLinePasswordConfirm" class="package-name-line" for="myInfoNewPasswordConfirm">
           <span>비밀번호 확인</span>
-          <input id="myInfoNewPasswordConfirm" class="input package-name-input" type="password" placeholder="비밀번호 확인" />
+          <input id="myInfoNewPasswordConfirm" class="input package-name-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="한 번 더" />
         </label>
         <div class="myinfo-actions">
           <button id="btnThemeToggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="다크 모드 전환">
@@ -80,7 +81,7 @@
 
   <section class="guest-page-card">
     <div id="myInfoGuestActions" class="myinfo-guest-actions hidden">
-      <p class="myinfo-guest-copy">찜하기는 로그인 후 사용할 수 있습니다.</p>
+      <p class="myinfo-guest-copy">즐겨찾기는 로그인 후 사용할 수 있어요.</p>
       <div class="myinfo-guest-buttons">
         <button id="btnMyInfoGuestLogin" class="btn primary" type="button">로그인</button>
         <button id="btnMyInfoGuestSignup" class="btn" type="button">회원가입</button>
@@ -108,33 +109,5 @@
       </div>
     </div>
   </div>
-
-  <nav class="mobile-tabbar" aria-label="모바일 네비게이션">
-    <a class="mobile-tabbar-item" href="./index.html">
-      <span class="mobile-tabbar-icon" aria-hidden="true">
-        <svg class="mobile-tabbar-home" viewBox="0 0 24 24">
-          <path d="M4.5 10.2 12 4l7.5 6.2V20a1 1 0 0 1-1 1h-4.1v-6.2H9.6V21H5.5a1 1 0 0 1-1-1z"></path>
-        </svg>
-      </span>
-      <span class="mobile-tabbar-label">홈</span>
-    </a>
-    <a class="mobile-tabbar-item" href="./favorite.html">
-      <span class="mobile-tabbar-icon" aria-hidden="true">
-        <svg class="mobile-tabbar-favorite" viewBox="0 0 24 24">
-          <path d="M12 21s-6.7-4.35-9.3-8.3C.4 9.27 1.62 5.2 5.42 4.22A5.4 5.4 0 0 1 12 6.36a5.4 5.4 0 0 1 6.58-2.14c3.8.98 5.02 5.05 2.72 8.48C18.7 16.65 12 21 12 21Z"></path>
-        </svg>
-      </span>
-      <span class="mobile-tabbar-label">찜</span>
-    </a>
-    <a class="mobile-tabbar-item is-current" href="./my-info.html" aria-current="page">
-      <span class="mobile-tabbar-icon">
-        <svg class="mobile-tabbar-profile" viewBox="0 0 24 24" aria-hidden="true">
-          <circle class="mobile-tabbar-profile-head" cx="12" cy="8.8" r="3.4"></circle>
-          <path class="mobile-tabbar-profile-body" d="M5.8 18.6c1.2-2.8 3.9-4.35 6.2-4.35s5 1.55 6.2 4.35c-1.4 1.08-3.63 1.8-6.2 1.8s-4.8-.72-6.2-1.8Z"></path>
-        </svg>
-      </span>
-      <span class="mobile-tabbar-label">MY</span>
-    </a>
-  </nav>
 </body>
 </html>

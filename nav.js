@@ -38,18 +38,57 @@
 
     document.querySelectorAll("[data-admin-only]").forEach((el) => el.classList.remove("hidden"));
 
-    const { count, error } = await client
-      .from("songs")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending");
-    if (error || !count) return;
+    // 승인 대기 = 대기 중인 악보 + 가입 승인 대기 회원
+    const [songs, members] = await Promise.all([
+      client.from("songs").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      client.from("profiles").select("id", { count: "exact", head: true }).eq("approved", false),
+    ]);
+    const count = (songs.error ? 0 : songs.count || 0) + (members.error ? 0 : members.count || 0);
+    if (!count) return;
     document.querySelectorAll("[data-pending-count]").forEach((el) => {
       el.textContent = String(count);
       el.classList.remove("hidden");
     });
   }
 
+  // 모바일: 헤더 오른쪽 햄버거 버튼 → 홈 · 즐겨찾기 · (승인 대기) · MY 메뉴
+  function setupMenuButton() {
+    document.querySelectorAll(".app-nav").forEach((nav, i) => {
+      if (nav.previousElementSibling?.classList.contains("app-menu-btn")) return;
+      if (!nav.id) nav.id = `appNav${i || ""}`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "app-menu-btn";
+      btn.setAttribute("aria-label", "메뉴 열기");
+      btn.setAttribute("aria-expanded", "false");
+      btn.setAttribute("aria-controls", nav.id);
+      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>';
+      nav.parentElement.insertBefore(btn, nav);
+
+      const setOpen = (open) => {
+        nav.classList.toggle("is-open", open);
+        btn.classList.toggle("is-open", open);
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        btn.setAttribute("aria-label", open ? "메뉴 닫기" : "메뉴 열기");
+      };
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setOpen(!nav.classList.contains("is-open"));
+      });
+      nav.addEventListener("click", (e) => e.stopPropagation());
+      document.addEventListener("click", () => setOpen(false));
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && nav.classList.contains("is-open")) {
+          setOpen(false);
+          btn.focus();
+        }
+      });
+      window.addEventListener("resize", () => setOpen(false));
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
+    setupMenuButton();
     markCurrent();
     revealAdminMenu().catch(() => {});
   });

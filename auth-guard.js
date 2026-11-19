@@ -17,7 +17,7 @@
 
   function getLoginRequiredMessage() {
     const path = currentPath();
-    if (path.endsWith("/favorite.html")) return "찜 기능은 로그인 후 사용할 수 있습니다.";
+    if (path.endsWith("/favorite.html")) return "즐겨찾기는 로그인 후 사용할 수 있어요.";
     if (path.endsWith("/my-info.html")) return "로그인 후 나의 정보를 확인할 수 있습니다.";
     if (path.endsWith("/my-packages.html")) return "로그인 후 내 콘티를 확인할 수 있습니다.";
     return "로그인이 필요합니다.";

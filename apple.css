@@ -224,6 +224,7 @@ a.btn,
 }
 .app-nav-item.hidden,
 .app-nav-count.hidden{ display: none !important; }
+.app-menu-btn{ display: none; }
 
 /* ---------- Layout ---------- */
 .container{
@@ -874,6 +875,14 @@ td.col-key{ color: var(--label); font-weight: 600; font-variant-numeric: tabular
 .review-field .select{ min-height: 38px; padding: 8px 12px; font-size: 15px; }
 .review-date{ grid-column: 1 / -1; font-size: 12px; color: var(--label-3); }
 .review-actions{ display: flex; gap: 8px; flex: 0 0 auto; }
+.review-item.review-member{ grid-template-columns: 44px minmax(0, 1fr) auto; }
+.review-member-avatar{
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--fill); color: var(--label); font-size: 18px; font-weight: 700;
+}
+.review-member-meta{ display: grid; gap: 2px; min-width: 0; }
+.review-member-meta strong{ font-size: 16px; font-weight: 600; }
 .review-empty{ padding: 48px 20px; text-align: center; color: var(--label-2); }
 
 /* MY → 승인 대기 링크 */
@@ -914,6 +923,91 @@ td.col-key{ color: var(--label); font-weight: 600; font-variant-numeric: tabular
 .auth-bottom-actions .btn{ min-height: 50px; border-radius: var(--radius-m); font-size: 16px; font-weight: 600; }
 .auth-bottom-actions .btn:not(.primary){ background: var(--surface); box-shadow: inset 0 0 0 .5px var(--separator); }
 .auth-input{ border-radius: var(--radius-s); }
+
+/* ---------- 로그인 / 회원가입: 닉네임 + 숫자 6자리 키패드 ---------- */
+.pin-auth-page{ min-height: 100dvh; background: var(--bg); }
+.pin-auth{
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 16px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+}
+.pin-auth-head{ display: flex; align-items: center; gap: 12px; min-height: 40px; }
+.pin-back{
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%;
+  background: var(--fill); color: var(--label); cursor: pointer;
+}
+.pin-back svg{ width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.pin-brand{ font-size: 18px; font-weight: 800; letter-spacing: -.03em; }
+.pin-auth-page .auth-brand-akbo{ color: var(--label-3); }
+.pin-auth-body{ flex: 1 1 auto; display: flex; flex-direction: column; padding-top: 32px; }
+.pin-title{ margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -.03em; line-height: 1.2; color: var(--label); }
+.pin-desc{ margin: 8px 0 28px; color: var(--label-2); font-size: 15px; line-height: 1.5; min-height: 22px; }
+.pin-step{ display: flex; flex-direction: column; gap: 12px; }
+.pin-step.hidden{ display: none; }
+.pin-nickname{ text-align: left; min-height: 56px; padding: 0 18px; border-radius: var(--radius-s); font-size: 18px; font-weight: 500; }
+.pin-next{ display: inline-flex; min-height: 54px; font-size: 16px; text-decoration: none; }
+.pin-status{ min-height: 20px; margin: 0; color: var(--red); font-size: 14px; text-align: center; }
+#stepNickname .pin-status{ text-align: left; }
+
+.pin-dots{ display: flex; justify-content: center; gap: 16px; margin: 8px 0 4px; }
+.pin-dots span{
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--fill-2);
+  transition: background-color 120ms ease, transform 160ms var(--ease-out);
+}
+.pin-dots span.is-filled{ background: var(--label); transform: scale(1.12); }
+.pin-dots.is-shake{ animation: pin-shake 360ms var(--ease-out); }
+@keyframes pin-shake{
+  0%, 100%{ transform: translateX(0); }
+  20%{ transform: translateX(-10px); }
+  40%{ transform: translateX(8px); }
+  60%{ transform: translateX(-6px); }
+  80%{ transform: translateX(4px); }
+}
+
+.pin-keypad{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 24px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pin-keypad button{
+  height: 64px;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  color: var(--label);
+  font: inherit;
+  font-size: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 80ms var(--ease-out), background-color 80ms ease;
+}
+.pin-keypad button:active{ transform: scale(.94); background: var(--fill-2); }
+.pin-keypad button[data-key="back"]{ background: transparent; box-shadow: none; }
+.pin-keypad button svg{ width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+#stepPin{ flex: 1 1 auto; }
+
+.pin-notice{ margin: 0 0 8px; padding: 18px; border-radius: var(--radius-m); background: var(--surface); box-shadow: var(--shadow-card); font-size: 15px; line-height: 1.6; color: var(--label); }
+.pin-auth-foot{ display: grid; gap: 12px; padding-top: 24px; text-align: center; }
+.pin-switch{ border: 0; background: transparent; color: var(--label-2); font: inherit; font-size: 14px; cursor: pointer; padding: 8px; }
+.pin-switch strong{ color: var(--label); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.pin-switch.hidden{ display: none; }
+.pin-auth-foot .auth-contact-accordion{ text-align: left; }
+.pin-auth-foot .auth-contact-title{ color: var(--label-3); font-size: 13px; text-align: center; cursor: pointer; }
+.pin-auth-foot .auth-contact-textarea{ width: 100%; border: 0; border-radius: var(--radius-s); background: var(--fill); padding: 12px 14px; font: inherit; color: var(--label); }
+.pin-contact-status{ margin: 6px 0 0; font-size: 13px; color: var(--label-2); }
 
 /* ---------- Desktop ---------- */
 @media (min-width: 769px){
@@ -976,9 +1070,70 @@ td.col-key{ color: var(--label); font-weight: 600; font-variant-numeric: tabular
 
 /* ---------- Mobile ---------- */
 @media (max-width: 768px){
-  .app-nav,
   .desktop-only,
   #btnAddSong{ display: none !important; }
+
+  /* 하단 탭바 대신 헤더 오른쪽 햄버거 메뉴 */
+  .mobile-tabbar{ display: none !important; }
+  body.index-page,
+  body[data-vault],
+  body[data-my-packages],
+  body:not(.auth-page){ padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .app-menu-btn{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--fill);
+    color: var(--label);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 120ms var(--ease-out), background-color 160ms ease;
+  }
+  .app-menu-btn:active{ transform: scale(.92); }
+  /* 모든 페이지 헤더: 제목 왼쪽 · 햄버거 오른쪽 */
+  .topbar > .brand,
+  body[data-my-info] .brand,
+  body[data-my-packages] .brand,
+  body[data-share] .brand{ flex: 1 1 auto; justify-content: flex-start; text-align: left; margin: 0; min-width: 0; }
+  .app-menu-btn.is-open{ background: var(--fill-2); }
+  .app-menu-btn svg{ width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  .app-nav{ display: none; }
+  .app-nav.is-open{
+    position: absolute;
+    top: calc(100% - 6px);
+    right: 16px;
+    z-index: 120;
+    display: grid;
+    gap: 2px;
+    min-width: 180px;
+    margin: 0;
+    padding: 6px;
+    border: .5px solid var(--separator);
+    border-radius: var(--radius-m);
+    background: var(--popover-bg);
+    box-shadow: var(--shadow-float);
+    transform-origin: top right;
+    animation: materialize 220ms var(--ease-out);
+  }
+  .app-nav.is-open .app-nav-item{
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 12px;
+    justify-content: space-between;
+    background: transparent;
+    color: var(--label);
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .app-nav.is-open .app-nav-item.is-current{ background: var(--fill); font-weight: 600; }
+  .app-nav.is-open .app-nav-item:active{ background: var(--fill-2); }
 
   body{ font-size: 16px; }
   /* 기존 overflow-x:hidden은 sticky(상단 고정 헤더)를 깨뜨림 → clip은 가로 넘침만 자르고 sticky는 유지
@@ -1066,8 +1221,10 @@ td.col-key{ color: var(--label); font-weight: 600; font-variant-numeric: tabular
   .review-form{ grid-template-columns: minmax(0, 1fr) 84px; }
   .review-form .review-field:first-child{ grid-column: 1 / -1; }
   .review-actions{ grid-column: 1 / -1; justify-content: flex-end; }
+  .review-item.review-member{ grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; }
+  .review-item.review-member .review-actions{ grid-column: auto; }
 
-  .app-toast{ bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .app-toast{ bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
 
   /* 악보 추가 창: 기존 모바일 "왼쪽 라벨 · 가운데 값" 형식 대신, 위 라벨 + 연회색 입력칸 */
   #addModal .modal-head{ justify-content: space-between; padding: 20px 20px 4px; }

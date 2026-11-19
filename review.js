@@ -215,7 +215,66 @@
     });
   }
 
+  // 가입 승인: 승인 전(approved=false) 회원 목록
+  function renderMembers(rows) {
+    const list = $("#reviewList");
+    list.innerHTML = "";
+    if (!rows.length) {
+      const empty = document.createElement("div");
+      empty.className = "review-empty";
+      empty.textContent = "가입 승인을 기다리는 회원이 없어요.";
+      list.appendChild(empty);
+      return;
+    }
+    rows.forEach((row) => {
+      const item = document.createElement("article");
+      item.className = "review-item review-member";
+      const avatar = document.createElement("div");
+      avatar.className = "review-member-avatar";
+      avatar.textContent = Array.from(row.nickname || "?")[0];
+      const meta = document.createElement("div");
+      meta.className = "review-member-meta";
+      const name = document.createElement("strong");
+      name.textContent = row.nickname || "(닉네임 없음)";
+      const date = document.createElement("span");
+      date.className = "review-date";
+      date.textContent = `${formatDate(row.created_at)} 가입`;
+      meta.append(name, date);
+      const actions = document.createElement("div");
+      actions.className = "review-actions";
+      actions.append(button("승인", "primary", async (b) => {
+        b.disabled = true;
+        const { data, error } = await client.from("profiles").update({ approved: true }).eq("id", row.id).select("id");
+        if (error || !data?.length) {
+          console.error(error);
+          alert("승인하지 못했어요. DB 마이그레이션(20261120) 적용 여부를 확인해 주세요.");
+          b.disabled = false;
+          return;
+        }
+        await load();
+      }));
+      item.append(avatar, meta, actions);
+      list.appendChild(item);
+    });
+  }
+
   async function load() {
+    if (currentTab === "members") {
+      const { data, error } = await client
+        .from("profiles")
+        .select("id, nickname, created_at")
+        .eq("approved", false)
+        .order("created_at", { ascending: true });
+      if (error) {
+        console.error(error);
+        setNotice("회원 목록을 불러오지 못했어요. supabase/migrations/20261120_nickname_pin_login.sql 적용 여부를 확인해 주세요.");
+        renderMembers([]);
+        return;
+      }
+      setNotice("");
+      renderMembers(data || []);
+      return;
+    }
     const { data, error } = await client
       .from("songs")
       .select("id, slug, title, artist, key, pdf_url, jpg_url, created_at, status")

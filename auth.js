@@ -1,457 +1,303 @@
 /*
  * Copyright (c) 2026 꿈꾸는교회 중고등부 찬양팀.
  * All rights reserved.
+ *
+ * 로그인 / 회원가입: 닉네임 + 숫자 6자리 (이메일 수집 안 함)
+ *   로그인:   닉네임 → 숫자 6자리 → 자동 로그인
+ *   회원가입: 닉네임 → 숫자 6자리 → 한 번 더 → 가입 (관리자 승인 후 이용)
  */
 const $ = (s) => document.querySelector(s);
+const A = window.KkumAccount;
 
 function nextPath() {
-  const url = new URL(location.href);
-  const n = url.searchParams.get("next") || "./index.html";
+  const n = new URL(location.href).searchParams.get("next") || "./index.html";
+  // 다른 사이트로 보내는 링크 방지
+  try {
+    const url = new URL(n, location.href);
+    if (url.origin !== location.origin) return "./index.html";
+  } catch {
+    return "./index.html";
+  }
   return n;
 }
 
 function requestedMode() {
-  const url = new URL(location.href);
-  const mode = String(url.searchParams.get("mode") || "").trim().toLowerCase();
-  return mode === "signup" ? "signup" : mode === "signin" ? "signin" : "";
-}
-
-function getAuthRedirectUrl() {
-  return new URL("./auth.html", location.href).toString();
-}
-
-function setStatus(msg, isError = false) {
-  const el = $("#authStatus");
-  if (!el) return;
-  el.textContent = msg || "";
-  el.style.color = isError ? "#d32f2f" : "#666";
-}
-
-function validateNickname(nickname = "") {
-  const value = String(nickname).trim();
-  if (!value) return "닉네임을 입력해 주세요.";
-  if (value.length >= 10) return "닉네임은 10글자 미만으로 입력해 주세요.";
-  if (!/^[A-Za-z가-힣]+$/.test(value)) return "닉네임은 한글/영문만 사용할 수 있어요.";
-  return "";
-}
-
-function validateEmail(email = "") {
-  const value = String(email).trim();
-  if (!value) return "이메일을 입력해 주세요.";
-  // practical email format check
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "올바른 이메일 형식으로 입력해 주세요.";
-  return "";
-}
-
-function validatePassword(password = "") {
-  const value = String(password);
-  if (!value) return "비밀번호를 입력해 주세요.";
-  if (value.length < 5 || value.length > 15) return "비밀번호는 5~15자로 입력해 주세요.";
-  if (!/^[A-Za-z0-9!@#]+$/.test(value)) return "비밀번호는 영문/숫자/!@#만 사용할 수 있어요.";
-  return "";
-}
-
-function setupContactAdmin() {
-  const btn = $("#btnContactAdmin");
-  const messageEl = $("#contactMessage");
-  if (!btn || !messageEl) return;
-
-  btn.addEventListener("click", async () => {
-    const message = String(messageEl.value || "").trim();
-    if (!message) {
-      setStatus("문의 내용을 입력해 주세요.", true);
-      return;
-    }
-
-    if (!window.SB?.isConfigured?.()) {
-      setStatus("문의 전송 설정이 비어 있습니다. 관리자에게 문의해 주세요.", true);
-      return;
-    }
-    const client = window.SB.getClient?.();
-    if (!client) {
-      setStatus("문의 전송 클라이언트를 초기화하지 못했습니다.", true);
-      return;
-    }
-
-    const prevText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "전송 중...";
-    try {
-      const nickname = String($("#authNickname")?.value || "").trim();
-      const email = String($("#authEmail")?.value || "").trim();
-      const mode = !$("#btnSubmitSignUp")?.classList.contains("hidden")
-        ? "signup"
-        : !$("#btnSubmitSignIn")?.classList.contains("hidden")
-          ? "signin"
-          : "intro";
-
-      const payload = {
-        message,
-        nickname: nickname || null,
-        email: email || null,
-        role: null,
-        mode,
-        source: "auth",
-      };
-
-      const { error } = await client.from("contact_messages").insert(payload);
-      if (error) {
-        console.error("contact_messages insert 실패:", error);
-        setStatus("문의 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.", true);
-        return;
-      }
-
-      messageEl.value = "";
-      setStatus("문의가 전송되었습니다.");
-    } catch (err) {
-      console.error(err);
-      setStatus("문의 전송 중 오류가 발생했습니다.", true);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = prevText;
-    }
-  });
+  const mode = String(new URL(location.href).searchParams.get("mode") || "").toLowerCase();
+  return mode === "signup" ? "signup" : "signin";
 }
 
 async function getMyProfile(client, userId) {
-  const { data, error } = await client
-    .from("profiles")
-    .select("id, approved, role")
-    .eq("id", userId)
-    .maybeSingle();
+  const { data, error } = await client.from("profiles").select("id, approved, role").eq("id", userId).maybeSingle();
   if (error) return null;
   return data || null;
 }
 
-async function ensureApprovedOrSignOut(client, session) {
-  const profile = await getMyProfile(client, session.user.id);
-  if (profile && profile.approved === false) {
-    await client.auth.signOut();
-    setStatus("관리자 승인 후 이용 가능합니다.", true);
-    return false;
-  }
-  return true;
-}
-
-async function syncProfileRole(client, session) {
-  // role/approved는 관리자만 DB에서 변경합니다. (supabase/migrations/20261119_*.sql)
-  // 예전에는 user_metadata.role로 profiles.role을 덮어써서 관리자 권한이 풀리거나
-  // 누구나 자기 role을 바꿀 수 있었기 때문에 클라이언트 동기화를 제거했습니다.
-}
-
-async function isRegisteredEmail(client, email) {
-  try {
-    const { data, error } = await client.rpc("is_registered_email", { p_email: email });
-    if (error) return null;
-    return !!data;
-  } catch {
-    return null;
-  }
+function setupContactAdmin(client) {
+  const btn = $("#btnContactAdmin");
+  const messageEl = $("#contactMessage");
+  const status = $("#contactStatus");
+  if (!btn || !messageEl) return;
+  btn.addEventListener("click", async () => {
+    const message = String(messageEl.value || "").trim();
+    if (!message) {
+      status.textContent = "문의 내용을 입력해 주세요.";
+      return;
+    }
+    btn.disabled = true;
+    try {
+      const { error } = await client.from("contact_messages").insert({
+        message,
+        nickname: A.normalizeNickname($("#authNickname")?.value || "") || null,
+        email: null,
+        role: null,
+        mode: "pin",
+        source: "auth",
+      });
+      status.textContent = error ? "문의 전송에 실패했어요. 잠시 후 다시 시도해 주세요." : "문의가 전송되었어요.";
+      if (!error) messageEl.value = "";
+    } catch {
+      status.textContent = "문의 전송 중 오류가 발생했어요.";
+    } finally {
+      btn.disabled = false;
+    }
+  });
 }
 
 async function initAuth() {
-  if (!window.SB || !window.SB.isConfigured()) {
-    setStatus("Supabase 설정이 비어 있습니다. supabase-config.js를 먼저 입력하세요.", true);
-    return;
-  }
-
+  if (!window.SB?.isConfigured() || !A) return;
   const client = window.SB.getClient();
-  if (!client) {
-    setStatus("Supabase 클라이언트를 초기화하지 못했습니다.", true);
-    return;
-  }
+  if (!client) return;
 
+  // 이미 로그인돼 있으면 바로 이동
   const { data } = await client.auth.getSession();
   const current = data?.session || null;
-  if (current) {
-    await syncProfileRole(client, current);
-    const ok = await ensureApprovedOrSignOut(client, current);
-    if (ok) {
+  if (current && !current.user?.is_anonymous) {
+    const profile = await getMyProfile(client, current.user.id);
+    if (!profile || profile.approved !== false) {
       location.replace(nextPath());
       return;
     }
+    await client.auth.signOut({ scope: "local" });
   }
 
-  const emailInput = $("#authEmail");
+  const nicknameForm = $("#stepNickname");
   const nicknameInput = $("#authNickname");
-  const pwInput = $("#authPassword");
-  const pwConfirmInput = $("#authPasswordConfirm");
-  const authFields = $("#authFields");
-  const authSub = $("#authSub");
-  const lineNickname = $("#lineNickname");
-  const lineEmail = $("#lineEmail");
-  const linePassword = $("#linePassword");
-  const linePwConfirm = $("#linePasswordConfirm");
-  const emailLabel = lineEmail?.querySelector("span");
-  const btnEnterIn = $("#btnEnterSignIn");
-  const btnEnterUp = $("#btnEnterSignUp");
-  const btnSubmitIn = $("#btnSubmitSignIn");
-  const btnSubmitUp = $("#btnSubmitSignUp");
-  const forgotLink = $("#forgotPasswordLink");
-  const btnSwitchMode = $("#btnSwitchMode");
-  const btnBackIntro = $("#btnBackIntro");
-  const intro = $("#authIntro");
-  const step = $("#authStep");
-  const introActions = $("#introActions");
-  const modeActions = $("#authModeActions");
-  let authMode = "";
+  const nicknameStatus = $("#nicknameStatus");
+  const stepPin = $("#stepPin");
+  const stepDone = $("#stepDone");
+  const dots = Array.from(document.querySelectorAll("#pinDots span"));
+  const dotsWrap = $("#pinDots");
+  const status = $("#authStatus");
+  const title = $("#authTitle");
+  const desc = $("#authDesc");
+  const switchBtn = $("#btnSwitchMode");
 
-  function isHidden(el) {
-    if (!el) return true;
-    if (el.classList.contains("hidden")) return true;
-    const parentHidden = el.closest(".hidden");
-    return !!parentHidden;
-  }
+  let mode = requestedMode(); // signin | signup
+  let step = "nickname"; // nickname | pin | confirm | done
+  let pin = "";
+  let firstPin = "";
+  let busy = false;
 
-  function updateEnterKeyHints() {
-    if (!nicknameInput || !emailInput || !pwInput || !pwConfirmInput) return;
-    if (authMode === "signin") {
-      emailInput.enterKeyHint = "next";
-      pwInput.enterKeyHint = "go";
-      return;
+  function render() {
+    const isSignup = mode === "signup";
+    title.textContent = isSignup ? "회원가입" : "로그인";
+    if (step === "nickname") {
+      desc.textContent = isSignup ? "사용할 닉네임을 정해주세요. 한글·영문·숫자 10자 이내예요." : "닉네임을 입력해 주세요.";
+    } else if (step === "pin") {
+      desc.textContent = isSignup ? `${nickname()}님, 비밀번호로 쓸 숫자 6자리를 눌러주세요.` : `${nickname()}님, 비밀번호 숫자 6자리를 눌러주세요.`;
+    } else if (step === "confirm") {
+      desc.textContent = "확인을 위해 한 번 더 눌러주세요.";
     }
-    if (authMode === "signup") {
-      nicknameInput.enterKeyHint = "next";
-      emailInput.enterKeyHint = "next";
-      pwInput.enterKeyHint = "next";
-      pwConfirmInput.enterKeyHint = "go";
-    }
+    nicknameForm.classList.toggle("hidden", step !== "nickname");
+    stepPin.classList.toggle("hidden", step !== "pin" && step !== "confirm");
+    stepDone.classList.toggle("hidden", step !== "done");
+    switchBtn.classList.toggle("hidden", step === "done");
+    switchBtn.innerHTML = isSignup ? "이미 계정이 있나요? <strong>로그인</strong>" : "처음이신가요? <strong>회원가입</strong>";
+    document.title = `${isSignup ? "회원가입" : "로그인"} · 꿈꾸는교회 악보함`;
+    renderDots();
   }
 
-  function focusNextVisible(inputs, current) {
-    const currentIndex = inputs.indexOf(current);
-    if (currentIndex < 0) return false;
-    for (let i = currentIndex + 1; i < inputs.length; i += 1) {
-      const next = inputs[i];
-      if (!isHidden(next)) {
-        next.focus();
-        return true;
-      }
-    }
-    return false;
+  function renderDots() {
+    dots.forEach((dot, i) => dot.classList.toggle("is-filled", i < pin.length));
+    dotsWrap.setAttribute("aria-label", `비밀번호 ${pin.length}자리 입력됨`);
   }
 
-  function setupInputEnterNavigation() {
-    const signInOrder = [emailInput, pwInput];
-    const signUpOrder = [nicknameInput, emailInput, pwInput, pwConfirmInput];
-    const allInputs = [nicknameInput, emailInput, pwInput, pwConfirmInput].filter(Boolean);
-
-    allInputs.forEach((input) => {
-      input.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter") return;
-        if (isHidden(input)) return;
-
-        const order = authMode === "signup" ? signUpOrder : signInOrder;
-        const moved = focusNextVisible(order, input);
-        if (moved) {
-          e.preventDefault();
-          return;
-        }
-
-        e.preventDefault();
-        if (authMode === "signup") {
-          btnSubmitUp?.click();
-          return;
-        }
-        btnSubmitIn?.click();
-      });
-    });
+  function nickname() {
+    return A.normalizeNickname(nicknameInput.value);
   }
 
-  function openAuthForm() {
-    intro?.classList.add("hidden");
-    introActions?.classList.add("hidden");
-    step?.classList.remove("hidden");
-    modeActions?.classList.remove("hidden");
+  function fail(message) {
+    status.textContent = message;
+    pin = "";
+    renderDots();
+    dotsWrap.classList.remove("is-shake");
+    void dotsWrap.offsetWidth;
+    dotsWrap.classList.add("is-shake");
+    if (navigator.vibrate) navigator.vibrate(60);
   }
 
-  function goToHome() {
-    location.href = "./index.html";
+  function goStep(next) {
+    step = next;
+    pin = "";
+    status.textContent = "";
+    nicknameStatus.textContent = "";
+    render();
+    if (next === "nickname") nicknameInput.focus();
   }
 
-  function enterLoginMode() {
-    openAuthForm();
-    authMode = "signin";
-    if (authSub) authSub.textContent = "";
-    authFields?.classList.remove("hidden");
-    lineNickname?.classList.add("hidden");
-    linePassword?.classList.remove("hidden");
-    linePwConfirm?.classList.add("hidden");
-    btnSubmitIn?.classList.remove("hidden");
-    btnSubmitUp?.classList.add("hidden");
-    forgotLink?.classList.remove("hidden");
-    btnSwitchMode?.classList.remove("hidden");
-    if (btnSwitchMode) btnSwitchMode.textContent = "회원가입으로 전환";
-    if (emailLabel) emailLabel.textContent = "이메일";
-    if (emailInput) {
-      emailInput.placeholder = "이메일";
-    }
-    updateEnterKeyHints();
-    setStatus("");
+  function setMode(next) {
+    mode = next;
+    firstPin = "";
+    const url = new URL(location.href);
+    url.searchParams.set("mode", next);
+    history.replaceState({}, "", url);
+    goStep("nickname");
   }
 
-  function enterSignUpMode() {
-    openAuthForm();
-    authMode = "signup";
-    if (authSub) authSub.textContent = "처음 가입한 계정은 관리자 승인 후 이용 가능합니다.";
-    authFields?.classList.remove("hidden");
-    lineNickname?.classList.remove("hidden");
-    linePassword?.classList.remove("hidden");
-    linePwConfirm?.classList.remove("hidden");
-    btnSubmitIn?.classList.add("hidden");
-    btnSubmitUp?.classList.remove("hidden");
-    forgotLink?.classList.add("hidden");
-    btnSwitchMode?.classList.remove("hidden");
-    if (btnSwitchMode) btnSwitchMode.textContent = "로그인으로 전환";
-    if (emailLabel) emailLabel.textContent = "이메일";
-    if (emailInput) {
-      emailInput.placeholder = "이메일";
-    }
-    updateEnterKeyHints();
-    setStatus("");
-  }
-
-  async function withPending(fn) {
-    if (btnEnterIn) btnEnterIn.disabled = true;
-    if (btnEnterUp) btnEnterUp.disabled = true;
-    if (btnSubmitIn) btnSubmitIn.disabled = true;
-    if (btnSubmitUp) btnSubmitUp.disabled = true;
+  async function submitSignIn() {
+    busy = true;
+    status.textContent = "확인 중…";
     try {
-      await fn();
-    } finally {
-      if (btnEnterIn) btnEnterIn.disabled = false;
-      if (btnEnterUp) btnEnterUp.disabled = false;
-      if (btnSubmitIn) btnSubmitIn.disabled = false;
-      if (btnSubmitUp) btnSubmitUp.disabled = false;
-    }
-  }
-
-  btnEnterIn?.addEventListener("click", enterLoginMode);
-  btnEnterUp?.addEventListener("click", enterSignUpMode);
-  btnBackIntro?.addEventListener("click", goToHome);
-  setupInputEnterNavigation();
-  btnSwitchMode?.addEventListener("click", () => {
-    if (authMode === "signin") {
-      enterSignUpMode();
-      return;
-    }
-    enterLoginMode();
-  });
-
-  const initialMode = requestedMode();
-  if (initialMode === "signup") {
-    enterSignUpMode();
-  } else if (initialMode === "signin") {
-    enterLoginMode();
-  }
-
-  btnSubmitIn?.addEventListener("click", () => withPending(async () => {
-    const email = String(emailInput?.value || "").trim();
-    const password = String(pwInput?.value || "");
-    if (!email && !password) {
-      setStatus("이메일과 비밀번호를 입력해 주세요.", true);
-      return;
-    }
-    if (!email) {
-      setStatus("이메일 주소를 입력해 주세요.", true);
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setStatus("올바른 이메일 형식으로 입력해 주세요.", true);
-      return;
-    }
-    if (!password) {
-      setStatus("비밀번호를 입력해 주세요.", true);
-      return;
-    }
-
-    const emailExists = await isRegisteredEmail(client, email);
-    if (emailExists === false) {
-      setStatus("가입되지 않은 이메일 주소입니다.", true);
-      return;
-    }
-
-    const { data, error } = await client.auth.signInWithPassword({ email, password });
-    if (error || !data?.session) {
-      let loginErrorMessage = error?.message || "로그인에 실패했습니다.";
-      if (error?.message === "Invalid login credentials") {
-        loginErrorMessage = emailExists === true
-          ? "비밀번호가 올바르지 않습니다."
-          : "이메일 또는 비밀번호가 올바르지 않습니다.";
+      const { data: res, error } = await client.auth.signInWithPassword({
+        email: A.nicknameToEmail(nickname()),
+        password: pin,
+      });
+      if (error || !res?.session) {
+        fail("닉네임 또는 비밀번호가 맞지 않아요.");
+        return;
       }
-      setStatus(loginErrorMessage, true);
+      const profile = await getMyProfile(client, res.session.user.id);
+      if (profile && profile.approved === false) {
+        await client.auth.signOut({ scope: "local" });
+        fail("아직 관리자 승인 전이에요. 승인 후 로그인할 수 있어요.");
+        return;
+      }
+      status.textContent = "";
+      location.replace(nextPath());
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function submitSignUp() {
+    busy = true;
+    status.textContent = "가입 중…";
+    try {
+      const { data: res, error } = await client.auth.signUp({
+        email: A.nicknameToEmail(nickname()),
+        password: pin,
+        options: { data: { nickname: nickname() } },
+      });
+      if (error) {
+        const msg = String(error.message || "").toLowerCase();
+        if (msg.includes("already") || error.status === 422) {
+          goStep("nickname");
+          nicknameStatus.textContent = "이미 사용 중인 닉네임이에요. 다른 닉네임을 써주세요.";
+          return;
+        }
+        if (msg.includes("password")) {
+          fail("이 비밀번호는 쓸 수 없어요. 다른 숫자 6자리를 눌러주세요.");
+          firstPin = "";
+          step = "pin";
+          render();
+          return;
+        }
+        fail("가입에 실패했어요. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+      // 이미 있는 닉네임이면 Supabase가 오류 대신 빈 identities를 돌려줄 때가 있음
+      if (res?.user && Array.isArray(res.user.identities) && res.user.identities.length === 0) {
+        goStep("nickname");
+        nicknameStatus.textContent = "이미 사용 중인 닉네임이에요. 다른 닉네임을 써주세요.";
+        return;
+      }
+      if (res?.session) await client.auth.signOut({ scope: "local" });
+      step = "done";
+      $("#authNotice").textContent = `${nickname()}님, 가입이 완료됐어요! 관리자 승인 후 로그인할 수 있어요. 비밀번호 숫자 6자리는 꼭 기억해 주세요.`;
+      title.textContent = "가입 완료";
+      desc.textContent = "";
+      render();
+    } finally {
+      busy = false;
+    }
+  }
+
+  function pressKey(key) {
+    if (busy || (step !== "pin" && step !== "confirm")) return;
+    if (key === "back") {
+      pin = pin.slice(0, -1);
+      status.textContent = "";
+      renderDots();
       return;
     }
+    if (!/^\d$/.test(key) || pin.length >= A.PIN_LENGTH) return;
+    pin += key;
+    renderDots();
+    if (pin.length < A.PIN_LENGTH) return;
 
-    await syncProfileRole(client, data.session);
-    const ok = await ensureApprovedOrSignOut(client, data.session);
-    if (!ok) return;
-    location.replace(nextPath());
-  }));
+    // 6자리 완성 → 다음 동작 (점이 다 찬 걸 잠깐 보여준 뒤)
+    setTimeout(() => {
+      if (mode === "signin") {
+        submitSignIn();
+      } else if (step === "pin") {
+        firstPin = pin;
+        step = "confirm";
+        pin = "";
+        status.textContent = "";
+        render();
+      } else if (pin !== firstPin) {
+        firstPin = "";
+        step = "pin";
+        render();
+        fail("두 번 입력한 숫자가 달라요. 처음부터 다시 눌러주세요.");
+      } else {
+        submitSignUp();
+      }
+    }, 120);
+  }
 
-  btnSubmitUp?.addEventListener("click", () => withPending(async () => {
-    const nickname = String(nicknameInput?.value || "").trim();
-    const email = String(emailInput?.value || "").trim();
-    const password = String(pwInput?.value || "");
-    const passwordConfirm = String(pwConfirmInput?.value || "").trim();
-    const role = "all";
-    const nicknameErr = validateNickname(nickname);
-    if (nicknameErr) { setStatus(nicknameErr, true); return; }
-    const emailErr = validateEmail(email);
-    if (emailErr) { setStatus(emailErr, true); return; }
-    const pwErr = validatePassword(password);
-    if (pwErr) { setStatus(pwErr, true); return; }
-    if (!passwordConfirm) { setStatus("비밀번호 확인을 입력해 주세요.", true); return; }
-    if (password !== passwordConfirm) {
-      setStatus("비밀번호와 비밀번호 확인이 일치하지 않습니다.", true);
-      return;
-    }
-
-    const { data, error } = await client.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: getAuthRedirectUrl(),
-        data: {
-          nickname,
-          role,
-        },
-      },
-    });
-    if (error) {
-      setStatus(error.message || "회원가입에 실패했습니다.", true);
-      return;
-    }
-
-    if (data?.session) {
-      await syncProfileRole(client, data.session);
-    }
-
-    setStatus("회원가입 완료. 관리자 승인 후 로그인 가능합니다.");
-  }));
-
-  forgotLink?.addEventListener("click", async (e) => {
+  nicknameForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    const email = String(emailInput?.value || "").trim();
-    if (!email || !email.includes("@")) {
-      setStatus("비밀번호 재설정을 위해 이메일을 입력해 주세요.", true);
+    const err = A.validateNickname(nicknameInput.value);
+    if (err) {
+      nicknameStatus.textContent = err;
+      nicknameInput.focus();
       return;
     }
-    const { error } = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: getAuthRedirectUrl(),
-    });
-    if (error) {
-      setStatus(error.message || "비밀번호 재설정 메일 발송에 실패했습니다.", true);
-      return;
-    }
-    setStatus("비밀번호 재설정 메일을 보냈어요.");
+    nicknameInput.value = nickname();
+    goStep("pin");
   });
+  nicknameInput.addEventListener("input", () => { nicknameStatus.textContent = ""; });
+
+  // 키패드: 누르는 순간 반응
+  document.querySelectorAll(".pin-keypad button").forEach((btn) => {
+    btn.addEventListener("click", () => pressKey(btn.dataset.key));
+  });
+  // 실제 키보드(데스크탑)도 지원
+  document.addEventListener("keydown", (e) => {
+    if (step !== "pin" && step !== "confirm") return;
+    if (/^\d$/.test(e.key)) { e.preventDefault(); pressKey(e.key); }
+    else if (e.key === "Backspace") { e.preventDefault(); pressKey("back"); }
+    else if (e.key === "Escape") { e.preventDefault(); goStep("nickname"); }
+  });
+
+  $("#btnAuthBack").addEventListener("click", () => {
+    if (step === "confirm") { firstPin = ""; goStep("pin"); return; }
+    if (step === "pin") { goStep("nickname"); return; }
+    if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) history.back();
+    else location.href = "./index.html";
+  });
+  switchBtn.addEventListener("click", () => setMode(mode === "signup" ? "signin" : "signup"));
+
+  setupContactAdmin(client);
+  render();
+  nicknameInput.focus();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  setupContactAdmin();
   initAuth().catch((err) => {
     console.error(err);
-    setStatus("인증 초기화 중 오류가 발생했습니다.", true);
+    const s = document.querySelector("#nicknameStatus");
+    if (s) s.textContent = "로그인 화면을 불러오지 못했어요. 새로고침해 주세요.";
   });
 });
