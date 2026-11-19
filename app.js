@@ -325,6 +325,16 @@ function toggleSortMenu() {
   }
 }
 
+// 제목 옆 곡 수: 목록 페이지는 전체 곡 수, 찜 페이지는 찜한 곡 수
+function updateSongCount() {
+  const el = $("#songCount");
+  if (!el) return;
+  const count = state.favoritesOnly
+    ? state.songs.filter((song) => isFavoriteSong(song.id)).length
+    : state.songs.length;
+  el.textContent = `${count.toLocaleString("ko-KR")}곡`;
+}
+
 function render() {
   if (!$("#tbody")) return; // 곡 페이지 등 목록이 없는 페이지
   const q = $("#q").value;
@@ -525,6 +535,7 @@ function render() {
   }
 
   updateSelectedBar();
+  updateSongCount();
   const canUseSelectionActions = state.selectMode && state.selectedIds.length > 0;
   const selectModeBtn = $("#btnSelectMode");
   const clearSelectedBtn = $("#btnClearSelected");
