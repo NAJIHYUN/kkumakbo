@@ -10,6 +10,7 @@
  * 사용법 (kkumakbo 폴더에서, `supabase login` + `supabase link` 된 상태):
  *   node scripts/upload-folder.mjs ~/코딩/DB            # 미리보기만 (아무것도 안 올림)
  *   node scripts/upload-folder.mjs ~/코딩/DB --apply    # 실제 업로드
+ *   node scripts/upload-folder.mjs ~/코딩/DB --artist=피아워십 --apply   # 파일명에 아티스트가 없을 때
  *
  * - 관리자 업로드라 바로 '승인됨'으로 올라갑니다.
  * - 같은 곡명+아티스트+키가 이미 있으면 건너뜁니다. (여러 번 실행해도 중복 안 생김)
@@ -32,6 +33,8 @@ const MERGEABLE = new Set([".png", ".jpg", ".jpeg", ".pdf"]); // pdf-lib가 넣�
 const args = process.argv.slice(2);
 const folder = args.find((a) => !a.startsWith("--"));
 const apply = args.includes("--apply");
+// 파일명에 아티스트가 없을 때 쓸 기본값: --artist=피아워십
+const defaultArtist = (args.find((a) => a.startsWith("--artist=")) || "").slice("--artist=".length).trim();
 if (!folder) {
   console.error("사용법: node scripts/upload-folder.mjs <폴더> [--apply]");
   process.exit(1);
@@ -58,21 +61,38 @@ function normalizeKey(raw = "") {
   return hit || k;
 }
 
+const isKey = (t = "") => KEYS.some((k) => k.toLowerCase() === String(t).toLowerCase());
+
+// 지원하는 파일명 (페이지 번호는 선택):
+//   곡명_아티스트_키      곡명_아티스트_키_2      곡명_아티스트_키2
+//   곡명_키              곡명_키_2              곡명_키2      (아티스트는 --artist=값)
+// 키는 대소문자 무관 (g → G, bb → Bb)
 function parseName(file) {
   const base = normalize(basename(file, extname(file)));
   const parts = base.split("_").map(normalize).filter(Boolean);
-  // 마지막이 숫자이고 그 앞이 키면 여러 장 중 한 페이지: 곡명_아티스트_키_2
+  if (parts.length < 2) return null;
   let page = 0;
-  if (parts.length >= 4 && /^\d+$/.test(parts[parts.length - 1]) && KEYS.some((k) => k.toLowerCase() === parts[parts.length - 2].toLowerCase())) {
+  const last = parts[parts.length - 1];
+  if (/^\d+$/.test(last) && parts.length >= 3 && isKey(parts[parts.length - 2])) {
+    // ..._키_2
     page = Number(parts.pop());
+  } else {
+    // ..._키2  (키 바로 뒤에 페이지 번호)
+    const m = last.match(/^([A-Ga-g](?:#|b|B)?)(\d+)$/);
+    if (m && isKey(m[1])) {
+      parts[parts.length - 1] = m[1];
+      page = Number(m[2]);
+    }
   }
-  if (parts.length < 3) return null;
-  return {
-    title: parts.slice(0, -2).join("_"),
-    artist: parts[parts.length - 2],
-    key: normalizeKey(parts[parts.length - 1]),
-    page,
-  };
+  if (!isKey(parts[parts.length - 1])) {
+    if (parts.length < 3) return null;
+  }
+  if (parts.length >= 3) {
+    return { title: parts.slice(0, -2).join("_"), artist: parts[parts.length - 2], key: normalizeKey(parts[parts.length - 1]), page };
+  }
+  // 곡명_키 → 아티스트는 기본값
+  if (!defaultArtist) return null;
+  return { title: parts[0], artist: defaultArtist, key: normalizeKey(parts[1]), page };
 }
 
 // 여러 장을 번호 순서대로 PDF 하나로 (앱과 같은 규칙: 이미지 크기 그대로 한 페이지씩)
@@ -125,7 +145,7 @@ async function main() {
   const plan = [];
   for (const f of files) {
     const meta = parseName(f);
-    if (!meta) { plan.push({ f, skip: "파일명 형식이 달라요 (곡명_아티스트_키)" }); continue; }
+    if (!meta) { plan.push({ f, skip: `파일명 형식이 달라요 (곡명_아티스트_키${defaultArtist ? "" : " · 아티스트가 없으면 --artist=이름"})` }); continue; }
     const k = dupKey(meta);
     if (!groups.has(k)) groups.set(k, { meta, parts: [] });
     groups.get(k).parts.push({ f, page: meta.page });
