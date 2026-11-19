@@ -13,6 +13,8 @@
  *
  * - 관리자 업로드라 바로 '승인됨'으로 올라갑니다.
  * - 같은 곡명+아티스트+키가 이미 있으면 건너뜁니다. (여러 번 실행해도 중복 안 생김)
+ * - 단, 이미 있는 곡에 여러 장(_1, _2 ...) 묶음이 들어오면 빠진 페이지를 채운 것으로 보고
+ *   링크(slug)는 그대로 두고 파일만 합친 PDF로 교체합니다. 예전 파일 주소는 출력해 둡니다.
  * - service_role 키는 Supabase CLI로 그때그때 받아서 메모리에서만 씁니다. 파일/화면에 남기지 않습니다.
  */
 import { spawnSync } from "node:child_process";
@@ -114,8 +116,9 @@ async function main() {
   if (!admins?.length) throw new Error("관리자(role=admin) 계정을 찾지 못했어요.");
   const owner = admins[0];
 
-  const existing = await rest("songs?select=title,artist,key");
+  const existing = await rest("songs?select=id,title,artist,key,pdf_url,jpg_url");
   const seen = new Set(existing.map(dupKey));
+  const byKey = new Map(existing.map((row) => [dupKey(row), row]));
 
   // 같은 곡(곡명+아티스트+키)의 _1, _2 ... 파일을 한 묶음으로
   const groups = new Map();
@@ -138,7 +141,17 @@ async function main() {
       plan.push({ f, meta: g.meta, skip: "합칠 수 없는 형식이 섞여 있어요 (png/jpg/pdf만)" });
       continue;
     }
-    if (seen.has(k)) { plan.push({ f, meta: g.meta, skip: "이미 같은 악보가 있어요" }); continue; }
+    if (seen.has(k)) {
+      const row = byKey.get(k);
+      const existingIsPdf = !!row?.pdf_url;
+      // 이미 있는 곡 + 여러 장 묶음 → 페이지가 빠졌던 것으로 보고 파일 교체 (이미 PDF면 그대로 둠)
+      if (row && g.parts.length > 1 && !existingIsPdf) {
+        plan.push({ f, meta: g.meta, parts: g.parts, warn: warn.join(", "), todo: true, replace: row });
+        continue;
+      }
+      plan.push({ f, meta: g.meta, skip: "이미 같은 악보가 있어요" });
+      continue;
+    }
     seen.add(k);
     plan.push({ f, meta: g.meta, parts: g.parts, warn: warn.join(", "), todo: true });
   }
@@ -147,7 +160,7 @@ async function main() {
   for (const p of plan) {
     const m = p.meta ? `${p.meta.title} / ${p.meta.artist} / ${p.meta.key}` : "";
     if (p.skip) console.log(`  건너뜀  ${p.f}  — ${p.skip}`);
-    else console.log(`  올림    ${m}${p.parts?.length > 1 ? `  (${p.parts.length}장 → PDF 1개)` : ""}${p.warn ? `   ⚠ ${p.warn}` : ""}`);
+    else console.log(`  ${p.replace ? "교체" : "올림"}    ${m}${p.replace ? "  (기존 1장 → 여러 장 PDF로 교체, 링크 유지)" : ""}${p.parts?.length > 1 ? `  (${p.parts.length}장 → PDF 1개)` : ""}${p.warn ? `   ⚠ ${p.warn}` : ""}`);
   }
   const todo = plan.filter((p) => p.todo);
   console.log(`\n올릴 악보 ${todo.length}개, 건너뜀 ${plan.length - todo.length}개`);
@@ -179,6 +192,20 @@ async function main() {
     if (!up.ok) { console.log(`  실패  ${p.f}: 파일 업로드 ${up.status} ${await up.text()}`); continue; }
     const url = `${BASE}/storage/v1/object/public/${BUCKET}/${objectPath}`;
     const isPdf = mime === "application/pdf";
+    if (p.replace) {
+      try {
+        await rest(`songs?id=eq.${p.replace.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ pdf_url: isPdf ? url : "", jpg_url: isPdf ? "" : url }),
+        });
+        ok += 1;
+        console.log(`  교체  ${p.meta.title}  (예전 파일: ${p.replace.pdf_url || p.replace.jpg_url})`);
+      } catch (err) {
+        console.log(`  실패  ${p.f}: DB 교체 ${err.message}`);
+      }
+      continue;
+    }
     try {
       await rest("songs", {
         method: "POST",
