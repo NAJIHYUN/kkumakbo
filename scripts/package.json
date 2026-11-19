@@ -1,0 +1,9 @@
+{
+  "name": "kkumakbo-scripts",
+  "private": true,
+  "type": "module",
+  "description": "관리자용 도구 (사이트 배포와 무관)",
+  "dependencies": {
+    "pdf-lib": "^1.17.1"
+  }
+}

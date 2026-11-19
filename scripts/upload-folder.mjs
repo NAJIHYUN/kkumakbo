@@ -2,8 +2,10 @@
 /*
  * 폴더 안의 악보 파일을 한 번에 DB에 올리는 관리자용 스크립트.
  *
- *   파일명 규칙:  곡명_아티스트_키.(png|jpg|jpeg|webp|pdf)
+ *   파일명 규칙:  곡명_아티스트_키.(png|jpg|jpeg|pdf)
  *   예)          거룩이 능력임을_피아워십_G.png
+ *   여러 장:      곡명_아티스트_키_1.png, 곡명_아티스트_키_2.png ...
+ *                → 번호 순서대로 PDF 하나로 합쳐서 올립니다.
  *
  * 사용법 (kkumakbo 폴더에서, `supabase login` + `supabase link` 된 상태):
  *   node scripts/upload-folder.mjs ~/코딩/DB            # 미리보기만 (아무것도 안 올림)
@@ -16,12 +18,14 @@
 import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, extname, basename } from "node:path";
+import { PDFDocument } from "pdf-lib";
 
 const PROJECT_REF = "hjpjetwprgzzdbbvqfur";
 const BASE = `https://${PROJECT_REF}.supabase.co`;
 const BUCKET = "score-files";
 const KEYS = ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
 const MIME = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".pdf": "application/pdf" };
+const MERGEABLE = new Set([".png", ".jpg", ".jpeg", ".pdf"]); // pdf-lib가 넣을 수 있는 형식
 
 const args = process.argv.slice(2);
 const folder = args.find((a) => !a.startsWith("--"));
@@ -55,12 +59,37 @@ function normalizeKey(raw = "") {
 function parseName(file) {
   const base = normalize(basename(file, extname(file)));
   const parts = base.split("_").map(normalize).filter(Boolean);
+  // 마지막이 숫자이고 그 앞이 키면 여러 장 중 한 페이지: 곡명_아티스트_키_2
+  let page = 0;
+  if (parts.length >= 4 && /^\d+$/.test(parts[parts.length - 1]) && KEYS.some((k) => k.toLowerCase() === parts[parts.length - 2].toLowerCase())) {
+    page = Number(parts.pop());
+  }
   if (parts.length < 3) return null;
   return {
     title: parts.slice(0, -2).join("_"),
     artist: parts[parts.length - 2],
     key: normalizeKey(parts[parts.length - 1]),
+    page,
   };
+}
+
+// 여러 장을 번호 순서대로 PDF 하나로 (앱과 같은 규칙: 이미지 크기 그대로 한 페이지씩)
+async function mergeToPdf(paths) {
+  const doc = await PDFDocument.create();
+  for (const path of paths) {
+    const ext = extname(path).toLowerCase();
+    const bytes = readFileSync(path);
+    if (ext === ".pdf") {
+      const src = await PDFDocument.load(bytes);
+      const pages = await doc.copyPages(src, src.getPageIndices());
+      pages.forEach((pg) => doc.addPage(pg));
+      continue;
+    }
+    const img = ext === ".png" ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
+    const pg = doc.addPage([img.width, img.height]);
+    pg.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+  }
+  return Buffer.from(await doc.save());
 }
 
 async function main() {
@@ -88,21 +117,37 @@ async function main() {
   const existing = await rest("songs?select=title,artist,key");
   const seen = new Set(existing.map(dupKey));
 
+  // 같은 곡(곡명+아티스트+키)의 _1, _2 ... 파일을 한 묶음으로
+  const groups = new Map();
   const plan = [];
   for (const f of files) {
     const meta = parseName(f);
     if (!meta) { plan.push({ f, skip: "파일명 형식이 달라요 (곡명_아티스트_키)" }); continue; }
-    if (!KEYS.includes(meta.key)) { plan.push({ f, meta, warn: `키 '${meta.key}'가 표준 키가 아니에요` }); }
-    if (seen.has(dupKey(meta))) { plan.push({ f, meta, skip: "이미 같은 악보가 있어요" }); continue; }
-    seen.add(dupKey(meta));
-    plan.push({ f, meta, todo: true });
+    const k = dupKey(meta);
+    if (!groups.has(k)) groups.set(k, { meta, parts: [] });
+    groups.get(k).parts.push({ f, page: meta.page });
+  }
+  for (const [k, g] of groups) {
+    g.parts.sort((a, b) => a.page - b.page);
+    const f = g.parts.length > 1 ? `${g.parts[0].f} 외 ${g.parts.length - 1}장` : g.parts[0].f;
+    const nums = g.parts.map((p) => p.page);
+    const warn = [];
+    if (!KEYS.includes(g.meta.key)) warn.push(`키 '${g.meta.key}'가 표준 키가 아니에요`);
+    if (g.parts.length > 1 && nums.some((n, i) => n !== i + 1)) warn.push(`페이지 번호가 이어지지 않아요 (${nums.join(", ")})`);
+    if (g.parts.length > 1 && g.parts.some((p) => !MERGEABLE.has(extname(p.f).toLowerCase()))) {
+      plan.push({ f, meta: g.meta, skip: "합칠 수 없는 형식이 섞여 있어요 (png/jpg/pdf만)" });
+      continue;
+    }
+    if (seen.has(k)) { plan.push({ f, meta: g.meta, skip: "이미 같은 악보가 있어요" }); continue; }
+    seen.add(k);
+    plan.push({ f, meta: g.meta, parts: g.parts, warn: warn.join(", "), todo: true });
   }
 
   console.log(`업로드 계정: ${owner.email || owner.id} (관리자)  |  ${apply ? "실제 업로드" : "미리보기 (--apply로 실행)"}\n`);
   for (const p of plan) {
     const m = p.meta ? `${p.meta.title} / ${p.meta.artist} / ${p.meta.key}` : "";
     if (p.skip) console.log(`  건너뜀  ${p.f}  — ${p.skip}`);
-    else console.log(`  올림    ${m}${p.warn ? `   ⚠ ${p.warn}` : ""}`);
+    else console.log(`  올림    ${m}${p.parts?.length > 1 ? `  (${p.parts.length}장 → PDF 1개)` : ""}${p.warn ? `   ⚠ ${p.warn}` : ""}`);
   }
   const todo = plan.filter((p) => p.todo);
   console.log(`\n올릴 악보 ${todo.length}개, 건너뜀 ${plan.length - todo.length}개`);
@@ -110,13 +155,26 @@ async function main() {
 
   let ok = 0;
   for (const p of todo) {
-    const ext = extname(p.f).toLowerCase();
+    let ext;
+    let body;
+    if (p.parts.length > 1) {
+      ext = ".pdf";
+      try {
+        body = await mergeToPdf(p.parts.map((x) => join(folder, x.f)));
+      } catch (err) {
+        console.log(`  실패  ${p.f}: PDF 병합 ${err.message}`);
+        continue;
+      }
+    } else {
+      ext = extname(p.parts[0].f).toLowerCase();
+      body = readFileSync(join(folder, p.parts[0].f));
+    }
     const mime = MIME[ext];
     const objectPath = `${owner.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext === ".jpeg" ? ".jpg" : ext}`;
     const up = await fetch(`${BASE}/storage/v1/object/${BUCKET}/${objectPath}`, {
       method: "POST",
       headers: { ...headers, "Content-Type": mime, "x-upsert": "false" },
-      body: readFileSync(join(folder, p.f)),
+      body,
     });
     if (!up.ok) { console.log(`  실패  ${p.f}: 파일 업로드 ${up.status} ${await up.text()}`); continue; }
     const url = `${BASE}/storage/v1/object/public/${BUCKET}/${objectPath}`;
