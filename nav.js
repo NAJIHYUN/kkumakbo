@@ -66,6 +66,8 @@
       nav.parentElement.insertBefore(btn, nav);
 
       const setOpen = (open) => {
+        // 정렬 메뉴(최신순/가나다순)와 동시에 열리지 않게
+        if (open && typeof window.closeSortMenu === "function") window.closeSortMenu();
         nav.classList.toggle("is-open", open);
         btn.classList.toggle("is-open", open);
         btn.setAttribute("aria-expanded", open ? "true" : "false");
@@ -89,6 +91,8 @@
         if (!nav.classList.contains("is-open")) return;
         if (nav.contains(e.target) || btn.contains(e.target)) return;
         setOpen(false);
+        // 헤더 안의 다른 버튼(정렬 등)은 한 번에 바로 동작하게 — 그 외 바깥 탭만 "닫기 전용"
+        if (e.target.closest?.(".topbar")) return;
         swallowClick = true;
         clearTimeout(swallowTimer);
         swallowTimer = setTimeout(() => { swallowClick = false; }, 500);
@@ -106,8 +110,12 @@
         }
       });
       window.addEventListener("resize", () => setOpen(false));
+      closers.push(() => setOpen(false));
     });
   }
+
+  const closers = [];
+  window.KkumNav = { close: () => closers.forEach((fn) => fn()) };
 
   document.addEventListener("DOMContentLoaded", () => {
     setupMenuButton();

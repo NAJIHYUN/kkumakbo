@@ -321,6 +321,7 @@ function toggleSortMenu() {
   if (!menu || !trigger) return;
   const willOpen = menu.classList.contains("hidden");
   if (willOpen) {
+    window.KkumNav?.close(); // 햄버거 메뉴와 동시에 열리지 않게
     menu.classList.remove("hidden");
     trigger.setAttribute("aria-expanded", "true");
   } else {
