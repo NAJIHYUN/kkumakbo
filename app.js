@@ -1123,7 +1123,7 @@ function openPreview(song) {
 
   // PDF가 있으면 우선 렌더링, 없을 때만 jpg 표시
   if (song.pdfUrl) {
-    previewMobileSlideMode = isMobileViewport();
+    previewMobileSlideMode = usePagesStackLayout();
     modal.classList.toggle("mobile-slide-mode", previewMobileSlideMode);
     previewPage = 1;
     previewTotalPages = 1;
@@ -1747,7 +1747,7 @@ function exitPreviewEditMode() {
   modal?.classList.remove("preview-edit-mode");
   $("#mEditAddPages").value = "";
   if (previewDoc) {
-    previewMobileSlideMode = isMobileViewport();
+    previewMobileSlideMode = usePagesStackLayout();
     modal?.classList.toggle("mobile-slide-mode", previewMobileSlideMode);
     if (previewMobileSlideMode) {
       pdfWrap?.classList.add("hidden");
@@ -3032,6 +3032,11 @@ function bindActionMenus() {
   }, true);
 }
 
+// 곡 페이지는 화면 크기와 상관없이 모든 페이지를 세로로 이어서 보여줌 (가로 넘기기 X)
+function usePagesStackLayout() {
+  return isSongPage() || isMobileViewport();
+}
+
 function isSongPage() {
   return document.body?.dataset?.page === "song";
 }
@@ -3062,7 +3067,7 @@ async function initSongPage() {
   window.addEventListener("resize", () => {
     syncMobilePreviewActionLayout();
     updatePreviewNavButtons();
-    if (!previewDoc) return;
+    if (!previewDoc || previewMobileSlideMode) return;
     renderMainPage(previewPage, previewSession).catch(() => {});
   });
   $("#mCopyLink")?.addEventListener("click", () => {

@@ -278,7 +278,21 @@ a.btn,
   font-size: 14px;
   font-weight: 500;
 }
-.sort-trigger:hover{ background: var(--fill); }
+@media (hover: hover) and (pointer: fine){
+  .sort-trigger:hover{ background: var(--fill); }
+}
+/* "가나다순"처럼 글자가 길어져도 줄바꿈 없이 버튼이 늘어나게 */
+.sort-trigger,
+.index-page .controls .sort-trigger,
+.controls #sortDropdown .sort-trigger{
+  white-space: nowrap;
+  width: auto;
+  min-width: max-content;
+  flex-shrink: 0;
+}
+.controls #sortDropdown{ flex-shrink: 0; }
+.sort-menu{ min-width: max-content; }
+.sort-option{ white-space: nowrap; }
 .sort-menu{
   border: .5px solid var(--separator);
   border-radius: var(--radius-m);
@@ -290,9 +304,18 @@ a.btn,
   transform-origin: top right;
   animation: materialize var(--dur) var(--ease-out);
 }
-.sort-option{ border-radius: 8px; color: var(--label); }
-.sort-option:hover{ background: var(--fill); }
-.sort-option.active{ color: var(--tint); font-weight: 600; background: transparent; }
+.sort-option,
+html[data-ui-theme="dark"] .sort-option{ border-radius: 8px; background: transparent; color: var(--label); }
+@media (hover: hover) and (pointer: fine){
+  .sort-option:hover{ background: var(--fill); }
+}
+@media (hover: none){
+  .sort-option:hover,
+  html[data-ui-theme="dark"] .sort-option:hover{ background: transparent; }
+  .sort-option:active{ background: var(--fill); }
+}
+.sort-option.active,
+html[data-ui-theme="dark"] .sort-option.active{ color: var(--tint); font-weight: 600; background: transparent; }
 
 .input, .select{
   border: 0;
@@ -845,34 +868,48 @@ td.col-key{ color: var(--label); font-weight: 600; font-variant-numeric: tabular
   .mobile-tabbar{ display: none !important; }
 }
 
-/* 넓은 데스크탑: 곡 페이지에서 썸네일을 세로로 옆에 */
-@media (min-width: 1180px){
-  .song-page .modal-body{
-    display: grid;
-    grid-template-columns: 132px minmax(0, 860px);
-    justify-content: center;
-    align-items: start;
-    gap: 24px;
-  }
-  .song-page .modal-body > .preview-edit-panel{ grid-column: 1 / -1; width: 100%; }
-  .song-page .page-strip{
-    grid-column: 1;
-    grid-row: 1 / span 3;
-    position: sticky;
-    top: 84px;
-    flex-direction: column;
-    max-height: calc(100dvh - 200px);
-    margin: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    scroll-snap-type: y mandatory;
-    order: -1;
-  }
-  .song-page .pdf-main-wrap,
-  .song-page .preview-img{ grid-column: 2; margin: 0; }
-  .song-page .modal-body:has(> .page-strip.hidden){ grid-template-columns: minmax(0, 860px); }
-  .song-page .modal-body:has(> .page-strip.hidden) > *{ grid-column: 1; }
+/* 곡 페이지: 여러 쪽 악보를 위에서 아래로 이어서 (가로 넘기기 대신) */
+.song-page #modal.mobile-slide-mode .page-strip{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0;
+  overflow: visible;
+  scroll-snap-type: none;
 }
+.song-page #modal.mobile-slide-mode .page-thumb.page-slide{
+  position: relative;
+  width: 100%;
+  max-width: 860px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+.song-page #modal.mobile-slide-mode .page-thumb.page-slide .page-thumb-image{
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-m);
+  background: #fff;
+  box-shadow: var(--shadow-card), 0 0 0 .5px var(--separator);
+}
+.song-page #modal.mobile-slide-mode .page-slide-badge{
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: auto;
+  padding: 3px 10px;
+  border-radius: var(--pill);
+  background: rgba(29, 29, 31, .72);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.song-page #modal.mobile-slide-mode #mPdfMainWrap{ display: none !important; }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 768px){
@@ -946,7 +983,8 @@ td.col-key{ color: var(--label); font-weight: 600; font-variant-numeric: tabular
   .song-page .pdf-main-wrap,
   .song-page .preview-img{ border-radius: 0; box-shadow: none; }
   .song-page .page-strip{ padding: 0 16px; scroll-padding: 0 16px; }
-  .song-page #modal.mobile-slide-mode .page-thumb{ width: 86vw; }
+  .song-page #modal.mobile-slide-mode .page-strip{ gap: 12px; padding: 0 12px; }
+  .song-page #modal.mobile-slide-mode .page-thumb.page-slide .page-thumb-image{ border-radius: var(--radius-s); }
   .song-page .page-thumb.page-slide .page-thumb-canvas{ border: 0; border-radius: var(--radius-s); box-shadow: var(--shadow-card), 0 0 0 .5px var(--separator); }
   .song-page .modal-foot .btn{ padding: 0 16px; }
 
