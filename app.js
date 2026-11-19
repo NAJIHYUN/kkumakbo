@@ -3391,8 +3391,20 @@ async function init() {
     updateScrollIndexThumb();
   });
 
-  // 악보 추가는 로그인 없이도 가능 (모든 업로드는 관리자 승인 후 공개)
-  $("#btnAddSong")?.addEventListener("click", () => openAddModal());
+  // 악보 추가: 메뉴의 "악보 추가" (로그인 없이도 가능, 모든 업로드는 관리자 승인 후 공개)
+  // 이 페이지에 추가 창이 있으면 바로 열고, 다른 페이지에서는 index.html?add=1로 와서 열림
+  document.querySelectorAll("[data-add-song]").forEach((link) => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      openAddModal();
+    });
+  });
+  const pageUrl = new URL(location.href);
+  if (pageUrl.searchParams.get("add") === "1") {
+    pageUrl.searchParams.delete("add");
+    history.replaceState({}, "", pageUrl.toString());
+    openAddModal();
+  }
 
   render();
   initMyInfoModal().catch((err) => {

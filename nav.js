@@ -51,7 +51,7 @@
     });
   }
 
-  // 모바일: 헤더 오른쪽 햄버거 버튼 → 홈 · 즐겨찾기 · (승인 대기) · MY 메뉴
+  // 모바일: 헤더 오른쪽 햄버거 버튼 → 홈 · 즐겨찾기 · 악보 추가 · (승인 대기) · MY 메뉴
   function setupMenuButton() {
     document.querySelectorAll(".app-nav").forEach((nav, i) => {
       if (nav.previousElementSibling?.classList.contains("app-menu-btn")) return;
@@ -75,7 +75,10 @@
         e.stopPropagation();
         setOpen(!nav.classList.contains("is-open"));
       });
-      nav.addEventListener("click", (e) => e.stopPropagation());
+      nav.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (e.target.closest(".app-nav-item")) setOpen(false); // 항목을 누르면 메뉴 닫기
+      });
       document.addEventListener("click", () => setOpen(false));
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && nav.classList.contains("is-open")) {

@@ -17,9 +17,9 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script defer src="./app.js?v=20261120-2"></script>
-  <script defer src="./nav.js?v=20261120-1"></script>
-  <link rel="stylesheet" href="./apple.css?v=20261120-8" />
+  <script defer src="./app.js?v=20261120-3"></script>
+  <script defer src="./nav.js?v=20261120-2"></script>
+  <link rel="stylesheet" href="./apple.css?v=20261120-12" />
 </head>
 <body class="index-page">
   <header class="topbar">
@@ -28,6 +28,7 @@
       <nav class="app-nav" aria-label="주요 메뉴">
         <a class="app-nav-item" href="./index.html" data-nav="index">홈</a>
         <a class="app-nav-item" href="./favorite.html" data-nav="favorite">즐겨찾기</a>
+        <a class="app-nav-item" href="./index.html?add=1" data-nav="add" data-add-song>악보 추가</a>
         <a class="app-nav-item hidden" href="./review.html" data-nav="review" data-admin-only>승인 대기<span class="app-nav-count hidden" data-pending-count></span></a>
         <a class="app-nav-item" href="./my-info.html" data-nav="my-info">MY</a>
       </nav>
@@ -36,9 +37,6 @@
 
   <main class="container">
     <section class="controls">
-      <button id="btnSelectMode" class="btn home-btn">선택</button>
-      <button id="btnClearSelected" class="btn home-btn hidden" type="button">선택 초기화</button>
-      <button id="btnShareSelected" class="btn home-btn primary" disabled>병합 후 공유</button>
       <div class="search-wrap">
         <input id="q" class="input" type="text" placeholder="검색" aria-label="악보 검색" />
         <button id="btnClearSearch" class="search-clear hidden" type="button" aria-label="검색어 지우기">×</button>
@@ -49,6 +47,9 @@
           </svg>
         </span>
       </div>
+      <button id="btnSelectMode" class="btn home-btn">선택</button>
+      <button id="btnClearSelected" class="btn home-btn hidden" type="button">선택 초기화</button>
+      <button id="btnShareSelected" class="btn home-btn primary" disabled>병합 후 공유</button>
       <div id="sortDropdown" class="sort-dropdown">
         <button id="sortTrigger" type="button" class="select sort-trigger" aria-haspopup="listbox" aria-expanded="false">최신순</button>
         <div id="sortMenu" class="sort-menu hidden" role="listbox" aria-label="정렬 방식"></div>
@@ -58,7 +59,6 @@
         </select>
       </div>
       <button id="btnMergeSelected" class="btn home-btn" disabled>악보 병합</button>
-      <button id="btnAddSong" class="btn home-btn primary desktop-only" type="button">악보 추가</button>
     </section>
 
     <section id="selectedBar" class="selected-bar selected-bar-collapsed">
