@@ -635,11 +635,11 @@ td.col-key{ color: var(--label); font-weight: 600; font-variant-numeric: tabular
   max-width: 860px;
   margin: 0 auto;
   border: 0;
-  border-radius: var(--radius-m);
+  border-radius: 0;
   background: #fff;
   padding: 0;
   overflow: hidden;
-  box-shadow: var(--shadow-card), 0 0 0 .5px var(--separator);
+  box-shadow: none;
 }
 .song-page .preview-img{ display: block; }
 .song-page .page-strip{
@@ -1248,10 +1248,13 @@ body[data-my-info] .myinfo-song-list .vault-empty{ padding: 28px 16px; text-alig
   display: block;
   width: 100%;
   height: auto;
-  border-radius: var(--radius-m);
+  /* 한 장짜리 이미지와 같게: 각진 모서리, 그림자 없음 */
+  border-radius: 0;
   background: #fff;
-  box-shadow: var(--shadow-card), 0 0 0 .5px var(--separator);
+  box-shadow: none;
 }
+/* 페이지가 1장뿐이면 1/1 배지 숨김 */
+.song-page #mPageStrip .page-thumb.page-slide:only-child .page-slide-badge{ display: none; }
 .song-page #modal.mobile-slide-mode .page-slide-badge{
   position: absolute;
   top: 12px;
@@ -1429,8 +1432,7 @@ body[data-my-info] .myinfo-song-list .vault-empty{ padding: 28px 16px; text-alig
   .song-page .preview-img{ border-radius: 0; box-shadow: none; }
   .song-page .page-strip{ padding: 0 16px; scroll-padding: 0 16px; }
   .song-page #modal.mobile-slide-mode .page-strip{ gap: 12px; padding: 0; }
-  .song-page #modal.mobile-slide-mode .page-thumb.page-slide .page-thumb-image{ border-radius: var(--radius-s); }
-  .song-page .page-thumb.page-slide .page-thumb-canvas{ border: 0; border-radius: var(--radius-s); box-shadow: var(--shadow-card), 0 0 0 .5px var(--separator); }
+  .song-page .page-thumb.page-slide .page-thumb-canvas{ border: 0; border-radius: 0; box-shadow: none; }
   .song-page .modal-foot .btn{ padding: 0 16px; }
 
   .review-item{ grid-template-columns: 64px minmax(0, 1fr); align-items: start; gap: 12px; padding: 14px 16px; }
