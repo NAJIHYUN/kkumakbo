@@ -175,6 +175,16 @@ a.btn,
   line-height: 1.1;
   color: var(--label);
 }
+/* 모든 페이지 헤더 제목은 홈("꿈꾸는교회 악보함")과 같은 스타일 */
+body .topbar .brand strong,
+body .topbar .brand #myPackagesTitle{
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -.022em;
+  line-height: 1.1;
+  color: var(--label);
+  text-align: left;
+}
 .app-brand{ text-decoration: none; align-items: baseline; gap: 8px; }
 .brand-count{
   color: var(--label-3);
@@ -1293,6 +1303,8 @@ body[data-my-info] .myinfo-song-list .vault-empty{ padding: 28px 16px; text-alig
   .index-page .brand{ justify-content: flex-start; width: auto; }
   .brand strong,
   .index-page .brand > strong{ font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
+  body .topbar .brand strong,
+  body .topbar .brand #myPackagesTitle{ font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
 
   .index-page .container{ padding: 12px 16px 0; }
   .container{ padding: 16px; }
