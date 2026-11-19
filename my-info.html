@@ -14,16 +14,21 @@
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="./supabase-config.js?v=20260324-2"></script>
   <script defer src="./supabase-client.js?v=20260324-2"></script>
-  <script defer src="./my-info.js?v=20260328-1"></script>
+  <script defer src="./my-info.js?v=20261119-1"></script>
+  <script defer src="./nav.js?v=20261119-1"></script>
+  <link rel="stylesheet" href="./apple.css?v=20261119-9" />
 </head>
 <body data-my-info="1">
   <header class="topbar">
     <div class="brand">
       <strong id="myInfoPageTitle">나의 정보</strong>
     </div>
-    <div class="top-actions">
-      <a class="link" href="./index.html">← 악보 목록</a>
-    </div>
+    <nav class="app-nav" aria-label="주요 메뉴">
+      <a class="app-nav-item" href="./index.html" data-nav="index">악보</a>
+      <a class="app-nav-item" href="./favorite.html" data-nav="favorite">찜</a>
+      <a class="app-nav-item hidden" href="./review.html" data-nav="review" data-admin-only>승인 대기<span class="app-nav-count hidden" data-pending-count></span></a>
+      <a class="app-nav-item" href="./my-info.html" data-nav="my-info">MY</a>
+    </nav>
   </header>
 
   <main class="container">
@@ -58,6 +63,11 @@
         <div id="myInfoStatus" class="myinfo-status"></div>
       </div>
     </section>
+    <a class="myinfo-admin-link hidden" href="./review.html" data-admin-only>
+      <span>악보 승인 대기</span>
+      <span class="app-nav-count hidden" data-pending-count></span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+    </a>
     <section id="myInfoPackagesSection" class="myinfo-packages-section">
       <strong id="myInfoPackagesTitle" class="myinfo-packages-title">나의 악보</strong>
       <div class="vault-search-wrap">
@@ -70,7 +80,7 @@
 
   <section class="guest-page-card">
     <div id="myInfoGuestActions" class="myinfo-guest-actions hidden">
-      <p class="myinfo-guest-copy">피드, 찜하기, 악보 추가는 로그인 후 사용할 수 있습니다.</p>
+      <p class="myinfo-guest-copy">찜하기는 로그인 후 사용할 수 있습니다.</p>
       <div class="myinfo-guest-buttons">
         <button id="btnMyInfoGuestLogin" class="btn primary" type="button">로그인</button>
         <button id="btnMyInfoGuestSignup" class="btn" type="button">회원가입</button>
@@ -107,16 +117,6 @@
         </svg>
       </span>
       <span class="mobile-tabbar-label">홈</span>
-    </a>
-    <a class="mobile-tabbar-item" href="./feed.html">
-      <span class="mobile-tabbar-icon" aria-hidden="true">
-        <svg class="mobile-tabbar-feed" viewBox="0 0 24 24">
-          <path d="M5.5 6.5h13a1 1 0 0 1 1 1v8.4a1 1 0 0 1-1 1h-7.3l-3.9 2.9v-2.9H5.5a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1Z"></path>
-          <path d="M8 10h8"></path>
-          <path d="M8 13h5.5"></path>
-        </svg>
-      </span>
-      <span class="mobile-tabbar-label">피드</span>
     </a>
     <a class="mobile-tabbar-item" href="./favorite.html">
       <span class="mobile-tabbar-icon" aria-hidden="true">

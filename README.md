@@ -8,6 +8,8 @@
 - 공유 페이지에서 전체/선택 페이지 PDF 병합 및 공유
 - 보관함(고등부/중등부/기타)별 패키지 저장
 - Supabase Auth 기반 로그인 + 승인(`approved`) 정책
+- 곡별 개별 링크(`song.html?s=...`)
+- 악보 업로드는 관리자 승인 후 공개
 
 ## 기술 스택
 - Vanilla HTML/CSS/JS
@@ -16,6 +18,10 @@
 
 ## 프로젝트 구조
 - `index.html` / `app.js`: 메인 악보 목록
+- `song.html` (+ `app.js`): 곡별 개별 페이지 `song.html?s=<난수>` — 미리보기/저장/공유/수정
+- `review.html` / `review.js`: 관리자 전용 업로드 승인
+- `nav.js`: 공통 내비게이션(현재 페이지, 관리자 메뉴)
+- `apple.css`: Apple 스타일 디자인 레이어 (styles.css 위에 덮어씀)
 - `share.html` / `share.js`: 공유 패키지 페이지
 - `auth.html` / `auth.js`: 로그인/회원가입
 - `songs.json`: 악보 메타데이터
@@ -41,6 +47,7 @@ python3 -m http.server 5500
 3. `supabase-config.js`에 `url`, `anonKey` 입력
 4. 회원가입 후 `profiles.approved = true`로 승인해야 로그인 가능
 5. 기존 프로젝트라면 `supabase/schema.sql`을 다시 실행해 `songs.uploader_nickname` 컬럼 추가
+6. `supabase/migrations/20261119_song_links_and_approval.sql` 실행 (곡 링크 + 업로드 승인)
 
 ## 권한/정책 요약
 - `packages` 삭제: 본인 생성 항목만 가능 (RLS)

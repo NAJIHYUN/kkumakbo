@@ -96,14 +96,9 @@ function setMyInfoSummary(nickname = "-", email = "-") {
 }
 
 async function syncMyInfoProfileRole(client, session) {
-  const role = String(session?.user?.user_metadata?.role || "").trim().toLowerCase();
-  if (!["high", "middle", "all", "admin"].includes(role)) return;
-  try {
-    await client
-      .from("profiles")
-      .update({ role })
-      .eq("id", session.user.id);
-  } catch {}
+  // role/approved는 관리자만 DB에서 변경합니다. (supabase/migrations/20261119_*.sql)
+  // 예전에는 user_metadata.role로 profiles.role을 덮어써서 관리자 권한이 풀리거나
+  // 누구나 자기 role을 바꿀 수 있었기 때문에 클라이언트 동기화를 제거했습니다.
 }
 
 function closeMyInfoAvatarCropModal() {
@@ -360,9 +355,16 @@ async function loadMySongs(userId = "") {
     let error;
     ({ data, error } = await client
       .from("songs")
-      .select("id, title, artist, key, pdf_url, jpg_url, created_at, owner_id, uploader_nickname")
+      .select("id, slug, status, title, artist, key, pdf_url, jpg_url, created_at, owner_id, uploader_nickname")
       .eq("owner_id", userId)
       .order("created_at", { ascending: false }));
+    if (error) {
+      ({ data, error } = await client
+        .from("songs")
+        .select("id, title, artist, key, pdf_url, jpg_url, created_at, owner_id, uploader_nickname")
+        .eq("owner_id", userId)
+        .order("created_at", { ascending: false }));
+    }
     if (error) {
       ({ data, error } = await client
         .from("songs")
@@ -373,6 +375,8 @@ async function loadMySongs(userId = "") {
     if (error || !Array.isArray(data)) return [];
     return data.map((row) => ({
       id: row.id,
+      slug: row.slug || "",
+      status: row.status || "approved",
       title: row.title || "이름 없는 악보",
       artist: row.artist || "",
       key: row.key || "",
@@ -387,7 +391,12 @@ async function loadMySongs(userId = "") {
 }
 
 function getSongOpenUrl(item) {
-  return String(item?.pdfUrl || item?.jpgUrl || "").trim();
+  const code = String(item?.slug || item?.id || "").trim();
+  if (!code) return "";
+  const url = new URL("./song.html", location.href);
+  url.search = "";
+  url.searchParams.set("s", code);
+  return url.toString();
 }
 
 async function renderSongs(userId, query = "") {
@@ -424,7 +433,14 @@ async function renderSongs(userId, query = "") {
     const keyText = item.key ? `${item.key}키` : "-";
     artistEl.textContent = `${artistText}ㆍ${keyText}`;
 
-    name.append(songTitleEl, artistEl);
+    name.append(songTitleEl);
+    if (item.status === "pending" || item.status === "rejected") {
+      const tag = document.createElement("span");
+      tag.className = `song-status-tag is-${item.status}`;
+      tag.textContent = item.status === "pending" ? "승인 대기" : "반려됨";
+      name.append(tag);
+    }
+    name.append(artistEl);
 
     const date = document.createElement("div");
     date.className = "vault-item-date";
@@ -441,7 +457,7 @@ async function renderSongs(userId, query = "") {
     openBtn.disabled = !openUrl;
     openBtn.addEventListener("click", () => {
       if (!openUrl) return;
-      window.open(openUrl, "_blank");
+      location.href = openUrl;
     });
 
     actions.append(openBtn);

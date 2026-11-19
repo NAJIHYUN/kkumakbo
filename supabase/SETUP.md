@@ -11,6 +11,16 @@
 4. 피드 기능을 쓰려면 `feed_posts` 테이블이 생성되었는지 확인합니다.
 5. 프로필 사진과 링크 제목을 쓰려면 `profiles.avatar_image_url`, `feed_posts.author_avatar_image_url`, `feed_posts.link_title` 컬럼이 추가되었는지 확인합니다.
 
+## 2-1) 2026-11 업데이트 마이그레이션 (필수)
+`supabase/migrations/20261119_song_links_and_approval.sql`을 SQL Editor에서 실행합니다.
+- 곡마다 난수 링크용 `songs.slug` 생성 (`song.html?s=<slug>`)
+- 업로드 승인: `songs.status` (`pending` / `approved` / `rejected`). 기존 악보는 모두 `approved`
+  - 관리자가 아닌 사용자가 올린 악보는 자동으로 `pending` → `review.html`에서 관리자가 승인
+  - 승인 전에는 올린 사람과 관리자만 볼 수 있음
+- 일반 사용자가 `profiles.role` / `approved`를 스스로 바꾸지 못하도록 보호 트리거 추가
+- 비로그인 업로드: SQL 실행 **후** Authentication > Sign In / Providers에서 **Allow anonymous sign-ins**를 켜세요. 켜지 않으면 로그인한 사람만 올릴 수 있습니다.
+- 실행 후 Authentication > Policies에서 `songs` 테이블에 `using (true)` 같은 다른 SELECT 정책이 남아 있지 않은지 확인하세요. 남아 있으면 승인 전 악보가 공개됩니다.
+
 ## 3) 프론트 설정
 1. `supabase-config.js` 파일을 열어 아래 값을 입력합니다.
 
@@ -29,7 +39,7 @@ window.SUPABASE_CONFIG = {
 ## 5) 동작 요약
 - 로그인 세션은 브라우저에 유지됩니다.
 - 패키지 생성 시 `packages` 테이블에 저장됩니다.
-- 피드 글은 `feed_posts` 테이블에 저장됩니다.
+- 커뮤니티(피드)는 2026-11 운영 종료. `feed_posts` 데이터는 남아 있습니다.
 - 링크 썸네일은 `link-preview` Edge Function이 외부 페이지의 Open Graph 이미지를 읽어옵니다.
 
 ## 6) Edge Function 배포

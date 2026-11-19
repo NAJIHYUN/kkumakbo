@@ -18,25 +18,20 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script defer src="./app.js?v=20260324-1"></script>
+  <script defer src="./app.js?v=20261119-6"></script>
+  <script defer src="./nav.js?v=20261119-1"></script>
+  <link rel="stylesheet" href="./apple.css?v=20261119-9" />
 </head>
 <body class="index-page" data-page="favorite" data-guest-page="favorite">
   <header class="topbar">
       <div class="top-main">
-        <div class="brand">
-          <strong>찜 악보</strong>
-        </div>
-        <div class="top-actions">
-          <a id="btnMyInfo" class="my-info-link hidden" href="./my-info.html" aria-label="나의 정보">
-            <svg class="my-info-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <circle class="my-info-ring" cx="12" cy="12" r="8.7"></circle>
-              <circle class="my-info-head" cx="12" cy="9.2" r="3.6"></circle>
-              <path class="my-info-body" d="M5.6 18.45c1.15-2.75 3.78-4.2 6.4-4.2s5.25 1.45 6.4 4.2c-1.48 1.43-3.73 2.35-6.4 2.35s-4.92-.92-6.4-2.35Z"></path>
-            </svg>
-            <span class="sr-only">나의 정보</span>
-          </a>
-          <a class="link hidden" href="./share.html" title="공유 링크 열기(선택됨 없으면 비어있음)">공유페이지</a>
-        </div>
+        <a class="brand app-brand" href="./index.html"><strong>꿈꾸는교회 악보함</strong></a>
+      <nav class="app-nav" aria-label="주요 메뉴">
+        <a class="app-nav-item" href="./index.html" data-nav="index">악보</a>
+        <a class="app-nav-item" href="./favorite.html" data-nav="favorite">찜</a>
+        <a class="app-nav-item hidden" href="./review.html" data-nav="review" data-admin-only>승인 대기<span class="app-nav-count hidden" data-pending-count></span></a>
+        <a class="app-nav-item" href="./my-info.html" data-nav="my-info">MY</a>
+      </nav>
       </div>
   </header>
 
@@ -64,6 +59,7 @@
         </select>
       </div>
       <button id="btnMergeSelected" class="btn home-btn" disabled>악보 병합</button>
+      <button id="btnAddSong" class="btn home-btn primary desktop-only" type="button">악보 추가</button>
     </section>
 
     <section id="selectedBar" class="selected-bar selected-bar-collapsed" data-guest-hide>
@@ -108,16 +104,6 @@
       </span>
       <span class="mobile-tabbar-label">홈</span>
     </a>
-    <a class="mobile-tabbar-item" href="./feed.html">
-      <span class="mobile-tabbar-icon" aria-hidden="true">
-        <svg class="mobile-tabbar-feed" viewBox="0 0 24 24">
-          <path d="M5.5 6.5h13a1 1 0 0 1 1 1v8.4a1 1 0 0 1-1 1h-7.3l-3.9 2.9v-2.9H5.5a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1Z"></path>
-          <path d="M8 10h8"></path>
-          <path d="M8 13h5.5"></path>
-        </svg>
-      </span>
-      <span class="mobile-tabbar-label">피드</span>
-    </a>
     <a class="mobile-tabbar-item is-current" href="./favorite.html" aria-current="page">
       <span class="mobile-tabbar-icon" aria-hidden="true">
         <svg class="mobile-tabbar-favorite" viewBox="0 0 24 24">
@@ -136,75 +122,6 @@
       <span class="mobile-tabbar-label">MY</span>
     </a>
   </nav>
-
-  <!-- Preview Modal -->
-  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop" data-close="1"></div>
-    <div class="modal-card">
-      <div class="modal-head">
-        <div>
-          <div id="mTitle" class="m-title"></div>
-          <div id="mMeta" class="m-meta"></div>
-        </div>
-        <button class="btn" data-close="1">닫기</button>
-      </div>
-      <div class="modal-body">
-        <button id="mPrevPage" class="preview-nav preview-nav-prev hidden" type="button" aria-label="이전 페이지">‹</button>
-        <button id="mNextPage" class="preview-nav preview-nav-next hidden" type="button" aria-label="다음 페이지">›</button>
-        <div id="mEditPanel" class="preview-edit-panel hidden">
-          <div class="preview-edit-grid">
-            <label class="add-label">
-              <span>악보명</span>
-              <input id="mEditTitle" class="input" type="text" />
-            </label>
-            <label class="add-label">
-              <span>아티스트</span>
-              <input id="mEditArtist" class="input" type="text" />
-            </label>
-            <label class="add-label">
-              <span>Key</span>
-              <select id="mEditKey" class="select">
-                <option value="">선택</option>
-                <option value="C">C</option>
-                <option value="Db">Db</option>
-                <option value="D">D</option>
-                <option value="Eb">Eb</option>
-                <option value="E">E</option>
-                <option value="F">F</option>
-                <option value="F#">F#</option>
-                <option value="G">G</option>
-                <option value="Ab">Ab</option>
-                <option value="A">A</option>
-                <option value="Bb">Bb</option>
-                <option value="B">B</option>
-              </select>
-            </label>
-            <label class="add-label">
-              <span>페이지 추가 (PDF/JPG, 다중 가능)</span>
-              <input id="mEditAddPages" class="input" type="file" accept="application/pdf,image/*" multiple />
-            </label>
-          </div>
-          <div class="preview-edit-actions">
-            <button id="mEditCancel" class="btn" type="button">수정 취소</button>
-            <button id="mEditApply" class="btn primary" type="button">적용 저장</button>
-          </div>
-        </div>
-        <img id="mImg" class="preview-img hidden" alt="미리보기" />
-        <div id="mPdfMainWrap" class="pdf-main-wrap hidden">
-          <canvas id="mPdfMain" class="pdf-main-canvas" aria-label="PDF 1페이지 미리보기"></canvas>
-        </div>
-        <div id="mPageStrip" class="page-strip hidden" aria-label="페이지 목록"></div>
-      </div>
-      <div class="modal-foot">
-        <button id="mEditSong" class="btn" type="button">악보 수정</button>
-        <button id="mDownloadPage" class="btn" type="button">페이지 선택</button>
-        <button id="mSaveImage" class="btn" type="button">이미지 저장</button>
-        <button id="mShareImage" class="btn" type="button">이미지 공유</button>
-        <a id="mDownload" class="btn primary" download>PDF 저장</a>
-        <button id="mSharePdf" class="btn" type="button">PDF 공유</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Add File Modal -->
   <div id="addModal" class="modal hidden" role="dialog" aria-modal="true">

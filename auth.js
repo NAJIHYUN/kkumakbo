@@ -134,14 +134,9 @@ async function ensureApprovedOrSignOut(client, session) {
 }
 
 async function syncProfileRole(client, session) {
-  const role = String(session?.user?.user_metadata?.role || "").trim().toLowerCase();
-  if (!["high", "middle", "all", "admin"].includes(role)) return;
-  try {
-    await client
-      .from("profiles")
-      .update({ role })
-      .eq("id", session.user.id);
-  } catch {}
+  // role/approved는 관리자만 DB에서 변경합니다. (supabase/migrations/20261119_*.sql)
+  // 예전에는 user_metadata.role로 profiles.role을 덮어써서 관리자 권한이 풀리거나
+  // 누구나 자기 role을 바꿀 수 있었기 때문에 클라이언트 동기화를 제거했습니다.
 }
 
 async function isRegisteredEmail(client, email) {

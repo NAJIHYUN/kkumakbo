@@ -13,6 +13,7 @@ const state = {
   favoritesOnly: false,
   myRole: "all",
   myNickname: "",
+  myUserId: "",
 };
 
 const SB_SONGS_TABLE = "songs";
@@ -325,6 +326,7 @@ function toggleSortMenu() {
 }
 
 function render() {
+  if (!$("#tbody")) return; // 곡 페이지 등 목록이 없는 페이지
   const q = $("#q").value;
   const sortMode = $("#sort").value;
   document.querySelectorAll(".table").forEach((el) => {
@@ -397,16 +399,21 @@ function render() {
 
     const tdTitle = document.createElement("td");
     tdTitle.className = "col-title";
-    const titleBtn = document.createElement("button");
-    titleBtn.type = "button";
+    const titleBtn = document.createElement("a");
     titleBtn.className = "titlebtn";
+    titleBtn.href = getSongPageUrl(song);
     titleBtn.textContent = song.title;
+    const statusLabel = getSongStatusLabel(song);
+    if (statusLabel) {
+      const tag = document.createElement("span");
+      tag.className = `song-status-tag is-${song.status}`;
+      tag.textContent = statusLabel;
+      titleBtn.appendChild(tag);
+    }
     if (disableMobileTitlePreview) {
       titleBtn.setAttribute("aria-disabled", "true");
       titleBtn.style.pointerEvents = "none";
       titleBtn.addEventListener("click", (e) => e.preventDefault());
-    } else {
-      titleBtn.addEventListener("click", () => openPreview(song));
     }
     const artistSub = document.createElement("div");
     artistSub.className = "artist-sub";
@@ -1105,6 +1112,7 @@ function openPreview(song) {
   $("#mEditArtist").value = song.artist || "";
   $("#mEditKey").value = song.key || "";
   $("#mEditAddPages").value = "";
+  $("#mEditSong")?.classList.toggle("hidden", !canEditSong(song));
 
   const img = $("#mImg");
   const pdfWrap = $("#mPdfMainWrap");
@@ -1155,11 +1163,9 @@ function openPreview(song) {
   }
 
   const dl = $("#mDownload");
-  const partialBtn = $("#mDownloadPage");
   dl.href = song.pdfUrl;
   const safeTitle = sanitizeFilename(song.title || "score");
   dl.setAttribute("download", `${safeTitle}.pdf`);
-  partialBtn.setAttribute("aria-pressed", "false");
   syncPartialDownloadButton();
 
   $("#modal").classList.remove("hidden");
@@ -1179,7 +1185,6 @@ function closeModal() {
   $("#mPdfMainWrap").classList.add("hidden");
   $("#mPageStrip").innerHTML = "";
   $("#mPageStrip").classList.add("hidden");
-  $("#mDownloadPage").classList.add("hidden");
   previewDoc = null;
   previewPage = 1;
   previewTotalPages = 1;
@@ -1274,15 +1279,15 @@ function sanitizeFilename(text) {
     .trim() || "score";
 }
 
-function getSongUploaderNickname(song = {}) {
-  return String(
-    song?.uploaderNickname ||
-    song?.ownerNickname ||
-    ""
-  ).trim();
-}
+const SONG_SELECT_FULL = "id, owner_id, title, artist, key, pdf_url, jpg_url, created_at, uploader_nickname, slug, status";
 
 async function selectSongsRows(client) {
+  const full = await client
+    .from(SB_SONGS_TABLE)
+    .select(SONG_SELECT_FULL)
+    .order("created_at", { ascending: false });
+  if (!full.error) return full;
+  console.warn("songs select with slug/status failed (migration 미적용?); falling back:", full.error);
   const withNickname = await client
     .from(SB_SONGS_TABLE)
     .select("id, owner_id, title, artist, key, pdf_url, jpg_url, created_at, uploader_nickname")
@@ -1298,10 +1303,10 @@ async function selectSongsRows(client) {
 function buildPreviewMeta(song = {}) {
   const artist = String(song?.artist || "").trim();
   const key = String(song?.key || "").trim();
-  const uploader = getSongUploaderNickname(song) || "닉네임";
   const artistPart = artist || "-";
   const keyPart = key ? `${key}키` : "-";
-  return `${artistPart}ㆍ${keyPart} (업로더 ${uploader})`;
+  const status = getSongStatusLabel(song);
+  return `${artistPart}ㆍ${keyPart}${status ? ` · ${status}` : ""}`;
 }
 
 async function sharePdfBlobMobile(blob, filename) {
@@ -1656,43 +1661,39 @@ async function downloadOrSharePdfUrl(pdfUrl, filename) {
   }
 }
 
-function syncPartialDownloadButton() {
-  const partialBtn = $("#mDownloadPage");
-  const downloadBtn = $("#mDownload");
-  const shareBtn = $("#mSharePdf");
-  const saveImageBtn = $("#mSaveImage");
-  const shareImageBtn = $("#mShareImage");
-  const hasPreviewSource = !!previewSong?.pdfUrl || !!previewSong?.jpgUrl;
-  const canShow = !!previewSong?.pdfUrl && previewTotalPages > 1 && !previewEditMode;
-  const isMobile = isMobileViewport();
-  const isTouchMobile = isTouchMobileDevice();
-  const canUsePdfDownload = !!previewSong?.pdfUrl && !previewEditMode;
-  const canUsePdfShare = hasPreviewSource && !previewEditMode && (!!previewSong?.pdfUrl || isMobile);
-  const canUseImageShare = hasPreviewSource && !previewEditMode && isMobile;
-  if (!partialBtn) return;
-  partialBtn.classList.toggle("hidden", !canShow);
-  partialBtn.disabled = !canShow;
-  partialBtn.classList.toggle("is-selecting", previewPartialSelectMode);
-  partialBtn.textContent = previewPartialSelectMode ? "선택 취소" : "페이지 선택";
-  downloadBtn?.classList.toggle("hidden", !canUsePdfDownload || isTouchMobile);
-  if (downloadBtn) {
-    downloadBtn.style.display = (!canUsePdfDownload || isTouchMobile) ? "none" : "";
+function canShareFiles() {
+  try {
+    const probe = new File([new Blob(["x"])], "probe.pdf", { type: "application/pdf" });
+    return !!navigator.canShare?.({ files: [probe] });
+  } catch {
+    return false;
   }
-  shareBtn?.classList.toggle("hidden", !canUsePdfShare);
-  if (shareBtn) {
-    shareBtn.disabled = !canUsePdfShare;
-    shareBtn.textContent = isMobile ? "PDF 공유(저장)" : "PDF 공유";
-  }
+}
 
-  if (saveImageBtn) {
-    saveImageBtn.classList.toggle("hidden", isMobile);
-    saveImageBtn.textContent = "이미지 저장";
-  }
-  if (shareImageBtn) {
-    shareImageBtn.classList.toggle("hidden", !canUseImageShare);
-    shareImageBtn.disabled = !canUseImageShare;
-    shareImageBtn.textContent = "이미지 공유";
-  }
+// 곡 페이지 툴바: 공유(링크/이미지/PDF) · 저장(이미지/PDF) 메뉴 항목 표시 여부
+function syncPartialDownloadButton() {
+  const hasSource = !!previewSong?.pdfUrl || !!previewSong?.jpgUrl;
+  const usable = hasSource && !previewEditMode;
+  const fileShare = usable && canShareFiles();
+  const items = [
+    ["#mCopyLink", !!previewSong],
+    ["#mShareImage", fileShare],
+    ["#mSharePdf", fileShare],
+    ["#mSaveImage", usable],
+    ["#mDownload", usable],
+  ];
+  items.forEach(([sel, on]) => {
+    const el = $(sel);
+    if (!el) return;
+    el.classList.toggle("hidden", !on);
+    if ("disabled" in el) el.disabled = !on;
+  });
+  // 항목이 하나도 없는 메뉴는 버튼째 숨김
+  document.querySelectorAll(".action-menu").forEach((menu) => {
+    const pop = getMenuPopover(menu);
+    const any = !!pop && Array.from(pop.querySelectorAll(".action-item")).some((el) => !el.classList.contains("hidden"));
+    menu.classList.toggle("hidden", !any);
+  });
 }
 
 function syncPreviewEditSelectionUI() {
@@ -1760,6 +1761,11 @@ function exitPreviewEditMode() {
   syncPreviewEditSelectionUI();
 }
 
+function canEditSong(song = {}) {
+  if (!state.myUserId) return false;
+  return state.myRole === "admin" || (!!song.ownerId && song.ownerId === state.myUserId);
+}
+
 function isRemoteSongId(id = "") {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id));
 }
@@ -1772,11 +1778,16 @@ async function saveSongMetaToSupabase(song, patch = {}) {
     const { data } = await client.auth.getSession();
     const userId = data?.session?.user?.id;
     if (!userId) return false;
-    const { error } = await client
+    // 본인 또는 관리자만 수정 가능 (RLS: songs_update_own_or_admin)
+    const { data: updated, error } = await client
       .from(SB_SONGS_TABLE)
       .update(patch)
       .eq("id", song.id)
-      .eq("owner_id", userId);
+      .select("id");
+    if (!error && (!Array.isArray(updated) || !updated.length)) {
+      alert("이 악보를 수정할 권한이 없어요.");
+      return false;
+    }
     if (error) {
       console.error("songs update 실패:", error);
       return false;
@@ -1981,26 +1992,6 @@ async function buildPdfBlobFromPreviewSelection() {
   throw new Error("no preview source");
 }
 
-function setPreviewPageSelectMode(enabled) {
-  const modal = $("#modal");
-  const next = !!enabled;
-  previewPartialSelectMode = next;
-  if (!next) {
-    previewSelectedPages = new Set();
-  }
-  if (next) {
-    modal.classList.add("preview-partial-mode");
-  } else {
-    modal.classList.remove("preview-partial-mode");
-  }
-  syncPreviewPartialSelectionUI();
-}
-
-function togglePreviewPageSelectMode() {
-  if (!previewSong?.pdfUrl || !previewDoc || previewEditMode) return;
-  setPreviewPageSelectMode(!previewPartialSelectMode);
-}
-
 async function downloadPreviewPdfBySelection() {
   if (!previewSong?.pdfUrl && !previewSong?.jpgUrl) return;
   if (!window.PDFLib) {
@@ -2044,14 +2035,7 @@ async function sharePreviewPdfBySelection() {
 }
 
 function syncMobilePreviewActionLayout() {
-  const head = document.querySelector("#modal .modal-head");
-  const foot = document.querySelector("#modal .modal-foot");
-  const closeBtn = head?.querySelector("[data-close]");
-  const downloadBtn = $("#mDownload");
-  if (!head || !foot || !closeBtn || !downloadBtn) return;
-
-  if (closeBtn.parentElement !== head) head.appendChild(closeBtn);
-  if (downloadBtn.parentElement !== foot) foot.appendChild(downloadBtn);
+  // 예전 모달용 버튼 재배치. 곡 페이지 툴바는 공유/저장 메뉴 구조라 옮길 것이 없음.
 }
 
 function toLocalSong(file, title, artist, key) {
@@ -2163,6 +2147,44 @@ async function buildMergedPdfFileFromImages(files = [], nameBase = "merged-image
   return new File([pdfBytes], `${safeBase}.pdf`, { type: "application/pdf" });
 }
 
+function songFromRow(row = {}) {
+  return {
+    id: row.id,
+    slug: String(row.slug || "").trim(),
+    status: String(row.status || "approved").trim(),
+    ownerId: row.owner_id || "",
+    title: row.title || "",
+    artist: row.artist || "",
+    key: row.key || "",
+    pdfUrl: row.pdf_url || "",
+    jpgUrl: row.jpg_url || "",
+    uploaderNickname: String(row.uploader_nickname || "").trim(),
+    createdAt: row.created_at || new Date().toISOString(),
+  };
+}
+
+// 곡별 개별 링크: song.html?s=<slug> (slug 없으면 id)
+function getSongPageUrl(song = {}) {
+  const code = String(song.slug || song.id || "").trim();
+  const base = new URL("./song.html", location.href);
+  base.search = "";
+  base.hash = "";
+  base.searchParams.set("s", code);
+  return base.toString();
+}
+
+function findSongByCode(code = "") {
+  const c = String(code || "").trim();
+  if (!c) return null;
+  return state.songs.find((s) => s.slug === c) || state.songs.find((s) => s.id === c) || null;
+}
+
+function getSongStatusLabel(song = {}) {
+  if (song.status === "pending") return "승인 대기";
+  if (song.status === "rejected") return "반려됨";
+  return "";
+}
+
 async function loadSongsFromSupabase() {
   if (!window.SB?.isConfigured()) return [];
   try {
@@ -2172,16 +2194,7 @@ async function loadSongsFromSupabase() {
     const { data: rows, error } = await selectSongsRows(client);
 
     if (error || !Array.isArray(rows)) return [];
-    return rows.map((row) => ({
-      id: row.id,
-      title: row.title || "",
-      artist: row.artist || "",
-      key: row.key || "",
-      pdfUrl: row.pdf_url || "",
-      jpgUrl: row.jpg_url || "",
-      uploaderNickname: String(row.uploader_nickname || "").trim(),
-      createdAt: row.created_at || new Date().toISOString(),
-    }));
+    return rows.map(songFromRow);
   } catch (err) {
     console.error("Supabase songs 로드 오류:", err);
     return [];
@@ -2324,18 +2337,27 @@ async function handleAddFileSubmit(e) {
 
   // Supabase 우선 저장 (팀 공용 반영)
   if (window.SB?.isConfigured()) {
+    let guestSession = false;
+    const client = window.SB.getClient();
     try {
-      const client = window.SB.getClient();
       const { data } = await client.auth.getSession();
-      const userId = data?.session?.user?.id;
+      let userId = data?.session?.user?.id;
       if (!userId) {
-        alert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
-        addUploadInProgress = false;
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = originalSubmitText;
+        // 비로그인 업로드: 이 업로드 동안만 Supabase 익명 세션을 만들고 끝나면 로그아웃.
+        // 익명 사용자도 기존 RLS(본인 폴더/본인 행)로 올리고, DB 트리거가 status='pending'으로 고정.
+        const { data: anon, error: anonErr } = await client.auth.signInAnonymously();
+        userId = anon?.user?.id;
+        if (anonErr || !userId) {
+          console.error("익명 업로드 세션 실패:", anonErr);
+          alert("지금은 로그인 없이 악보를 올릴 수 없어요. 로그인 후 다시 시도해 주세요.");
+          addUploadInProgress = false;
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalSubmitText;
+          }
+          return;
         }
-        return;
+        guestSession = true;
       }
 
       const uploadedSongs = [];
@@ -2348,7 +2370,6 @@ async function handleAddFileSubmit(e) {
         const fileUrl = await uploadSongFileToSupabase(file, userId);
         const payload = {
           owner_id: userId,
-          uploader_nickname: String(state.myNickname || "").trim(),
           ...toSongRecordPayload(songTitle, songArtist, songKey, fileUrl, file),
         };
         if (!payload.pdf_url && !payload.jpg_url) continue;
@@ -2356,19 +2377,11 @@ async function handleAddFileSubmit(e) {
         const { data: row, error } = await client
           .from(SB_SONGS_TABLE)
           .insert(payload)
-          .select("id, title, artist, key, pdf_url, jpg_url, created_at, uploader_nickname")
+          .select("*")
           .single();
         if (error) throw error;
-        uploadedSongs.push({
-          id: row.id,
-          title: row.title || "",
-          artist: row.artist || "",
-          key: row.key || "",
-          pdfUrl: row.pdf_url || "",
-          jpgUrl: row.jpg_url || "",
-          uploaderNickname: String(row.uploader_nickname || state.myNickname || "").trim(),
-          createdAt: row.created_at || new Date().toISOString(),
-        });
+        const uploaded = songFromRow(row);
+        uploadedSongs.push(uploaded);
         doneBytes += file.size || 0;
         doneFiles += 1;
         setAddUploadProgress(doneBytes, totalBytes, doneFiles, addableFiles.length);
@@ -2388,6 +2401,11 @@ async function handleAddFileSubmit(e) {
       closeAddModal();
       $("#addFileForm").reset();
       render();
+      if (uploadedSongs.some((song) => song.status === "pending")) {
+        showToast("업로드 완료! 관리자 승인 후 모두에게 공개돼요.");
+      } else {
+        showToast("악보를 추가했어요.");
+      }
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = originalSubmitText;
@@ -2402,6 +2420,10 @@ async function handleAddFileSubmit(e) {
         submitBtn.textContent = originalSubmitText;
       }
       return;
+    } finally {
+      if (guestSession) {
+        try { await client.auth.signOut({ scope: "local" }); } catch {}
+      }
     }
   }
 
@@ -2524,12 +2546,6 @@ function renderThumbStrip(doc, session, slideMode = false) {
       async () => {
         if (previewEditMode) {
           // 편집 모드에서는 탭 삭제를 사용하지 않음 (드래그 정렬 전용)
-          return;
-        }
-        if (previewPartialSelectMode) {
-          if (previewSelectedPages.has(pageNumber)) previewSelectedPages.delete(pageNumber);
-          else previewSelectedPages.add(pageNumber);
-          syncPreviewPartialSelectionUI();
           return;
         }
         if (slideMode) return;
@@ -2725,39 +2741,41 @@ function updatePreviewNavButtons() {
 }
 
 async function shareSingle(song) {
-  const pdfUrl = new URL(song.pdfUrl, location.href).toString();
-  const text = `${song.title}${song.artist ? ` - ${song.artist}` : ""}`;
-
-  if (navigator.share) {
+  // 곡별 개별 링크(song.html?s=...)를 공유. PDF 파일 자체 공유는 곡 페이지의 "PDF 공유"에서.
+  const url = getSongPageUrl(song);
+  const text = `${song.title}${song.artist ? ` - ${song.artist}` : ""}${song.key ? ` (${song.key})` : ""}`;
+  if (navigator.share && isTouchMobileDevice()) {
     try {
-      // 1) 가능하면 PDF 파일 자체를 공유
-      if (song.pdfUrl) {
-        const res = await fetch(song.pdfUrl, { cache: "no-store" });
-        if (res.ok) {
-          const blob = await res.blob();
-          const safeName = (song.title || "sheet").replace(/[\\/:*?"<>|]+/g, "_");
-          const file = new File([blob], `${safeName}.pdf`, { type: "application/pdf" });
-          if (navigator.canShare?.({ files: [file] })) {
-            await navigator.share({ title: song.title, text, files: [file] });
-            return;
-          }
-        }
-      }
-
-      // 2) 파일 공유가 안 되면 링크 공유
-      await navigator.share({ title: song.title, text, url: pdfUrl });
+      await navigator.share({ title: song.title, text, url });
       return;
     } catch (err) {
       if (err?.name === "AbortError") return;
     }
   }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("링크를 복사했어요.");
+  } catch {
+    prompt("복사해서 공유하세요:", url);
+  }
+}
 
-  // 3) 마지막 fallback: 링크 복사
-  navigator.clipboard?.writeText(pdfUrl).then(() => {
-    alert("공유 시트를 지원하지 않아 PDF 링크를 복사했어요.");
-  }).catch(() => {
-    prompt("복사해서 공유하세요:", pdfUrl);
-  });
+function showToast(message = "") {
+  let toast = document.querySelector("#appToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "appToast";
+    toast.className = "app-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.remove("is-visible");
+  void toast.offsetWidth;
+  toast.classList.add("is-visible");
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => toast.classList.remove("is-visible"), 2400);
 }
 
 function buildShareLinkFromSelected(pkgMeta = {}) {
@@ -2954,6 +2972,179 @@ function hydrateSelectionFromUrl() {
   state.selectedIds = ids.filter(id => state.songs.some(s => s.id === id));
 }
 
+// 공유/저장 메뉴: 누르면 버튼 위로 떠오르는 작은 메뉴. 바깥 클릭·Esc·스크롤·항목 선택 시 닫힘
+// 메뉴 요소는 <body>로 옮겨 둔다 (툴바의 backdrop-filter 아래에 있으면 악보 캔버스에 가려짐)
+function getMenuPopover(menu) {
+  const id = menu.querySelector(".action-trigger")?.getAttribute("aria-controls");
+  return id ? document.getElementById(id) : null;
+}
+
+function bindActionMenus() {
+  const menus = Array.from(document.querySelectorAll(".action-menu"));
+  menus.forEach((menu) => {
+    const pop = getMenuPopover(menu);
+    if (pop && pop.parentElement !== document.body) document.body.appendChild(pop);
+  });
+  const closeAll = (except = null) => {
+    menus.forEach((menu) => {
+      if (menu === except) return;
+      getMenuPopover(menu)?.classList.add("hidden");
+      menu.querySelector(".action-trigger")?.setAttribute("aria-expanded", "false");
+      menu.classList.remove("is-open");
+    });
+  };
+  const place = (trigger, pop) => {
+    const r = trigger.getBoundingClientRect();
+    const half = Math.max(pop.offsetWidth, 168) / 2;
+    const center = Math.min(Math.max(r.left + r.width / 2, half + 8), window.innerWidth - half - 8);
+    pop.style.left = `${center}px`;
+    pop.style.bottom = `${window.innerHeight - r.top + 12}px`;
+  };
+  menus.forEach((menu) => {
+    const trigger = menu.querySelector(".action-trigger");
+    const pop = getMenuPopover(menu);
+    if (!trigger || !pop) return;
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const willOpen = pop.classList.contains("hidden");
+      closeAll(menu);
+      pop.classList.toggle("hidden", !willOpen);
+      menu.classList.toggle("is-open", willOpen);
+      trigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+      if (willOpen) {
+        place(trigger, pop);
+        pop.querySelector(".action-item:not(.hidden)")?.focus({ preventScroll: true });
+      }
+    });
+    pop.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (e.target.closest(".action-item")) closeAll();
+    });
+  });
+  document.addEventListener("click", () => closeAll());
+  window.addEventListener("resize", () => closeAll());
+  window.addEventListener("scroll", () => closeAll(), { passive: true });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && menus.some((m) => m.classList.contains("is-open"))) {
+      e.stopImmediatePropagation();
+      closeAll();
+    }
+  }, true);
+}
+
+function isSongPage() {
+  return document.body?.dataset?.page === "song";
+}
+
+function leaveSongPage() {
+  // 목록에서 들어왔으면 뒤로가기(스크롤 위치 유지), 링크로 바로 들어왔으면 목록으로
+  let fromList = false;
+  try {
+    fromList = !!document.referrer && new URL(document.referrer).origin === location.origin && history.length > 1;
+  } catch {}
+  if (fromList) history.back();
+  else location.href = "./index.html";
+}
+
+function renderSongNotFound() {
+  document.title = "악보를 찾을 수 없어요";
+  const empty = $("#songEmpty");
+  $("#modal")?.classList.add("hidden");
+  empty?.classList.remove("hidden");
+}
+
+async function initSongPage() {
+  bindPreviewControls();
+  bindArtistAutocomplete("#mEditArtist", "#mEditArtistSuggest");
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !previewEditMode) leaveSongPage();
+  });
+  window.addEventListener("resize", () => {
+    syncMobilePreviewActionLayout();
+    updatePreviewNavButtons();
+    if (!previewDoc) return;
+    renderMainPage(previewPage, previewSession).catch(() => {});
+  });
+  $("#mCopyLink")?.addEventListener("click", () => {
+    if (previewSong) shareSingle(previewSong);
+  });
+  bindActionMenus();
+
+  const code = new URL(location.href).searchParams.get("s") || "";
+  const song = findSongByCode(code);
+  if (!song) {
+    renderSongNotFound();
+    return;
+  }
+  document.title = `${song.title}${song.key ? ` (${song.key})` : ""} · 꿈꾸는교회 악보함`;
+  // 옛 id 링크로 들어왔으면 주소창을 slug 링크로 정리
+  if (song.slug && code !== song.slug) {
+    history.replaceState({}, "", getSongPageUrl(song));
+  }
+  syncMobilePreviewActionLayout();
+  openPreview(song);
+}
+
+function bindPreviewControls() {
+  if (!$("#modal")) return;
+  $("#modal").addEventListener("click", (e) => {
+    if (e.target?.closest?.("[data-close]")) leaveSongPage();
+  });
+  $("#mPrevPage").addEventListener("click", async () => {
+    if (!previewDoc) return;
+    if (previewPage <= 1) return;
+    const session = previewSession;
+    await renderMainPage(previewPage - 1, session);
+  });
+  $("#mNextPage").addEventListener("click", async () => {
+    if (!previewDoc) return;
+    if (previewPage >= previewTotalPages) return;
+    const session = previewSession;
+    await renderMainPage(previewPage + 1, session);
+  });
+  $("#mEditSong").addEventListener("click", async () => {
+    if (!previewSong) return;
+    if (previewEditMode) {
+      exitPreviewEditMode();
+    } else {
+      const user = await requireLoggedInAction("악보 수정은 로그인 후 사용할 수 있습니다.");
+      if (!user) return;
+      enterPreviewEditMode();
+    }
+  });
+  $("#mEditCancel").addEventListener("click", () => {
+    exitPreviewEditMode();
+  });
+  $("#mEditApply").addEventListener("click", () => {
+    applyPreviewEdit().catch((err) => {
+      console.error(err);
+      alert("악보 수정 적용 중 오류가 발생했어요.");
+    });
+  });
+  $("#mDownload").addEventListener("click", async (e) => {
+    e.preventDefault();
+    await downloadPreviewPdfBySelection();
+  });
+  $("#mSharePdf").addEventListener("click", () => {
+    sharePreviewPdfBySelection().catch((err) => {
+      console.error(err);
+      alert("PDF 공유 중 오류가 발생했어요.");
+    });
+  });
+  $("#mSaveImage").addEventListener("click", () => {
+    savePreviewAsImage().catch((err) => {
+      console.error(err);
+      alert("이미지 저장 중 오류가 발생했어요.");
+    });
+  });
+  $("#mShareImage").addEventListener("click", () => {
+    sharePreviewAsImage().catch((err) => {
+      console.error(err);
+      alert("이미지 공유 중 오류가 발생했어요.");
+    });
+  });
+}
+
 async function init() {
   let songs = [];
   try {
@@ -2969,6 +3160,7 @@ async function init() {
       const { data } = await client.auth.getSession();
       const userId = data?.session?.user?.id;
       if (userId) {
+        state.myUserId = userId;
         const nicknameFromSession = String(
           data?.session?.user?.user_metadata?.nickname ||
           data?.session?.user?.email?.split("@")[0] ||
@@ -3013,6 +3205,11 @@ async function init() {
   );
   saveFavoriteIds();
   state.favoritesOnly = document.body?.dataset?.page === "favorite";
+
+  if (isSongPage()) {
+    await initSongPage();
+    return;
+  }
 
   hydrateSelectionFromUrl();
   syncSortOptionsByViewport();
@@ -3105,8 +3302,6 @@ async function init() {
 
   $("#btnMergeSelected").addEventListener("click", async () => {
     if (isMobileViewport()) {
-      const user = await requireLoggedInAction("악보 추가는 로그인 후 사용할 수 있습니다.");
-      if (!user) return;
       openAddModal();
       return;
     }
@@ -3148,81 +3343,15 @@ async function init() {
     }
   });
 
-  // modal close
-  $("#modal").addEventListener("click", (e) => {
-    if (e.target?.dataset?.close) closeModal();
-  });
-  $("#mPrevPage").addEventListener("click", async () => {
-    if (!previewDoc) return;
-    if (previewPage <= 1) return;
-    const session = previewSession;
-    await renderMainPage(previewPage - 1, session);
-  });
-  $("#mNextPage").addEventListener("click", async () => {
-    if (!previewDoc) return;
-    if (previewPage >= previewTotalPages) return;
-    const session = previewSession;
-    await renderMainPage(previewPage + 1, session);
-  });
-  $("#mDownloadPage").addEventListener("click", () => {
-    togglePreviewPageSelectMode();
-  });
-  $("#mEditSong").addEventListener("click", async () => {
-    if (!previewSong) return;
-    if (previewEditMode) {
-      exitPreviewEditMode();
-    } else {
-      const user = await requireLoggedInAction("악보 수정은 로그인 후 사용할 수 있습니다.");
-      if (!user) return;
-      enterPreviewEditMode();
-    }
-  });
-  $("#mEditCancel").addEventListener("click", () => {
-    exitPreviewEditMode();
-  });
-  $("#mEditApply").addEventListener("click", () => {
-    applyPreviewEdit().catch((err) => {
-      console.error(err);
-      alert("악보 수정 적용 중 오류가 발생했어요.");
-    });
-  });
-  $("#mDownload").addEventListener("click", async (e) => {
-    e.preventDefault();
-    await downloadPreviewPdfBySelection();
-  });
-  $("#mSharePdf").addEventListener("click", () => {
-    sharePreviewPdfBySelection().catch((err) => {
-      console.error(err);
-      alert("PDF 공유 중 오류가 발생했어요.");
-    });
-  });
-  $("#mSaveImage").addEventListener("click", () => {
-    savePreviewAsImage().catch((err) => {
-      console.error(err);
-      alert("이미지 저장 중 오류가 발생했어요.");
-    });
-  });
-  $("#mShareImage").addEventListener("click", () => {
-    sharePreviewAsImage().catch((err) => {
-      console.error(err);
-      alert("이미지 공유 중 오류가 발생했어요.");
-    });
-  });
   $("#addModal").addEventListener("click", (e) => {
     if (e.target?.dataset?.closeAdd) closeAddModal();
   });
-  $("#addFileInput")?.addEventListener("change", () => {
-    addPendingFiles = Array.from($("#addFileInput")?.files || []);
-    renderAddFileOrder();
-  });
   bindArtistAutocomplete("#addArtist", "#addArtistSuggest");
-  bindArtistAutocomplete("#mEditArtist", "#mEditArtistSuggest");
   setupAddModalEnterNavigation();
   $("#addFileForm").addEventListener("submit", handleAddFileSubmit);
   $("#btnAddFile")?.addEventListener("click", openAddModal);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      closeModal();
       closeAddModal();
       $("#myInfoModal")?.classList.add("hidden");
     }
@@ -3237,15 +3366,12 @@ async function init() {
     syncScrollIndexOffset();
     renderScrollIndex();
     updateScrollIndexThumb();
-    if ($("#modal").classList.contains("hidden")) return;
-    if (!previewDoc) return;
-    const session = previewSession;
-    renderMainPage(previewPage, session).catch(() => {});
   });
 
+  // 악보 추가는 로그인 없이도 가능 (모든 업로드는 관리자 승인 후 공개)
+  $("#btnAddSong")?.addEventListener("click", () => openAddModal());
+
   render();
-  syncMobilePreviewActionLayout();
-  updatePreviewNavButtons();
   initMyInfoModal().catch((err) => {
     console.error("my info 초기화 실패:", err);
   });
