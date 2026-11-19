@@ -17,9 +17,9 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script defer src="./app.js?v=20261120-5"></script>
+  <script defer src="./app.js?v=20261121-1"></script>
   <script defer src="./nav.js?v=20261120-4"></script>
-  <link rel="stylesheet" href="./apple.css?v=20261120-17" />
+  <link rel="stylesheet" href="./apple.css?v=20261121-1" />
 </head>
 <body class="index-page">
   <header class="topbar">
@@ -36,7 +36,7 @@
       <nav class="app-nav" aria-label="주요 메뉴">
         <a class="app-nav-item" href="./index.html" data-nav="index">홈</a>
         <a class="app-nav-item" href="./favorite.html" data-nav="favorite">즐겨찾기</a>
-        <a class="app-nav-item" href="./index.html?add=1" data-nav="add" data-add-song>악보 추가</a>
+        <a class="app-nav-item" href="./add.html" data-nav="add">악보 추가</a>
         <a class="app-nav-item hidden" href="./review.html" data-nav="review" data-admin-only>승인 대기<span class="app-nav-count hidden" data-pending-count></span></a>
         <a class="app-nav-item" href="./my-info.html" data-nav="my-info">MY</a>
       </nav>
@@ -93,69 +93,6 @@
       </div>
     </section>
   </main>
-
-  <!-- Add File Modal -->
-  <div id="addModal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop" data-close-add="1"></div>
-    <div class="modal-card add-modal-card">
-      <div class="modal-head">
-        <div class="brand">
-          <strong class="m-title">악보 추가</strong>
-        </div>
-        <button class="btn" data-close-add="1">닫기</button>
-      </div>
-      <form id="addFileForm" class="modal-body add-form">
-        <div class="add-form-grid">
-          <label class="add-label">
-            <span>제목</span>
-            <input id="addTitle" class="input" type="text" placeholder="ex. 푯대를 향하여" />
-          </label>
-          <label class="add-label">
-            <span>찬양팀</span>
-            <div class="artist-autocomplete">
-              <input id="addArtist" class="input" type="text" placeholder="ex. 어노인팅" autocomplete="off" />
-              <div id="addArtistSuggest" class="artist-suggest hidden" role="listbox" aria-label="찬양팀 추천"></div>
-            </div>
-          </label>
-          <label class="add-label">
-            <span>Key</span>
-            <select id="addKey" class="select">
-              <option value="">선택</option>
-              <option value="C">C</option>
-              <option value="Db">Db</option>
-              <option value="D">D</option>
-              <option value="Eb">Eb</option>
-              <option value="E">E</option>
-              <option value="F">F</option>
-              <option value="F#">F#</option>
-              <option value="G">G</option>
-              <option value="Ab">Ab</option>
-              <option value="A">A</option>
-              <option value="Bb">Bb</option>
-              <option value="B">B</option>
-            </select>
-          </label>
-        </div>
-        <label class="add-file-field">
-          <span>파일 (PDF/JPG, 이미지 다중 선택 가능)</span>
-          <input id="addFileInput" class="input" type="file" accept="application/pdf,image/*" multiple required />
-        </label>
-        <div id="addUploadProgressWrap" class="upload-progress hidden" aria-live="polite">
-          <div class="upload-progress-head">
-            <span id="addUploadProgressText">업로드 준비</span>
-            <span id="addUploadProgressPercent">0%</span>
-          </div>
-          <div class="upload-progress-track">
-            <div id="addUploadProgressBar" class="upload-progress-bar"></div>
-          </div>
-        </div>
-      </form>
-      <div class="modal-foot">
-        <button class="btn add-modal-close-mobile" type="button" data-close-add="1">닫기</button>
-        <button id="btnSubmitAddFile" class="btn primary" type="submit" form="addFileForm">추가</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Package Create Modal -->
   <div id="packageModal" class="modal hidden" role="dialog" aria-modal="true">

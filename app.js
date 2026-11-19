@@ -1229,15 +1229,15 @@ function closeModal() {
   updatePreviewNavButtons();
 }
 
+// 악보 추가는 별도 페이지(add.html)
 function openAddModal() {
-  resetAddUploadProgress();
-  $("#addModal").classList.remove("hidden");
+  location.href = "./add.html";
 }
 
 function closeAddModal() {
   if (addUploadInProgress) return;
   resetAddUploadProgress();
-  $("#addModal").classList.add("hidden");
+  $("#addModal")?.classList.add("hidden");
 }
 
 function getAddSubmitButton() {
@@ -3060,6 +3060,24 @@ function usePagesStackLayout() {
   return isSongPage() || isMobileViewport();
 }
 
+// 악보 추가 페이지 (로그인 없이도 가능, 모든 업로드는 관리자 승인 후 공개)
+function initAddPage() {
+  resetAddUploadProgress();
+  bindArtistAutocomplete("#addArtist", "#addArtistSuggest");
+  setupAddModalEnterNavigation();
+  $("#addFileForm")?.addEventListener("submit", handleAddFileSubmit);
+  $("#btnAddBack")?.addEventListener("click", () => {
+    if (addUploadInProgress) return;
+    let fromSite = false;
+    try {
+      fromSite = !!document.referrer && new URL(document.referrer).origin === location.origin && history.length > 1;
+    } catch {}
+    if (fromSite) history.back();
+    else location.href = "./index.html";
+  });
+  $("#addTitle")?.focus();
+}
+
 function isSongPage() {
   return document.body?.dataset?.page === "song";
 }
@@ -3237,6 +3255,10 @@ async function init() {
     await initSongPage();
     return;
   }
+  if (document.body?.dataset?.page === "add") {
+    initAddPage();
+    return;
+  }
 
   hydrateSelectionFromUrl();
   syncSortOptionsByViewport();
@@ -3370,16 +3392,9 @@ async function init() {
     }
   });
 
-  $("#addModal").addEventListener("click", (e) => {
-    if (e.target?.dataset?.closeAdd) closeAddModal();
-  });
-  bindArtistAutocomplete("#addArtist", "#addArtistSuggest");
-  setupAddModalEnterNavigation();
-  $("#addFileForm").addEventListener("submit", handleAddFileSubmit);
   $("#btnAddFile")?.addEventListener("click", openAddModal);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      closeAddModal();
       $("#myInfoModal")?.classList.add("hidden");
     }
   });
@@ -3395,19 +3410,10 @@ async function init() {
     updateScrollIndexThumb();
   });
 
-  // 악보 추가: 메뉴의 "악보 추가" (로그인 없이도 가능, 모든 업로드는 관리자 승인 후 공개)
-  // 이 페이지에 추가 창이 있으면 바로 열고, 다른 페이지에서는 index.html?add=1로 와서 열림
-  document.querySelectorAll("[data-add-song]").forEach((link) => {
-    link.addEventListener("click", (e) => {
-      e.preventDefault();
-      openAddModal();
-    });
-  });
-  const pageUrl = new URL(location.href);
-  if (pageUrl.searchParams.get("add") === "1") {
-    pageUrl.searchParams.delete("add");
-    history.replaceState({}, "", pageUrl.toString());
-    openAddModal();
+  // 예전 링크(index.html?add=1)는 악보 추가 페이지로
+  if (new URL(location.href).searchParams.get("add") === "1") {
+    location.replace("./add.html");
+    return;
   }
 
   render();

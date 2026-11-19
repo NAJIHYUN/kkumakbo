@@ -1,0 +1,81 @@
+<!doctype html>
+<!--
+  Copyright (c) 2026 꿈꾸는교회 중고등부 찬양팀.
+  All rights reserved.
+-->
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>악보 추가 · 꿈꾸는교회 악보함</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
+  <script src="./theme.js?v=20261120-1"></script>
+  <link rel="stylesheet" href="./styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="./supabase-config.js?v=20260324-1"></script>
+  <script defer src="./supabase-client.js?v=20260324-1"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script defer src="./app.js?v=20261121-1"></script>
+  <link rel="stylesheet" href="./apple.css?v=20261121-1" />
+</head>
+<body class="add-page" data-page="add">
+  <header class="add-head">
+    <button id="btnAddBack" class="pin-back" type="button" aria-label="뒤로">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"></path></svg>
+    </button>
+    <h1 class="add-head-title">악보 추가</h1>
+  </header>
+
+  <main class="add-main">
+    <p class="add-lead">올린 악보는 관리자 승인 후 모두에게 공개돼요.</p>
+
+    <form id="addFileForm" class="add-card" novalidate>
+      <label class="add-field">
+        <span>제목</span>
+        <input id="addTitle" class="input" type="text" placeholder="예: 푯대를 향하여" enterkeyhint="next" />
+      </label>
+      <label class="add-field">
+        <span>찬양팀</span>
+        <div class="artist-autocomplete">
+          <input id="addArtist" class="input" type="text" placeholder="예: 어노인팅" autocomplete="off" enterkeyhint="next" />
+          <div id="addArtistSuggest" class="artist-suggest hidden" role="listbox" aria-label="찬양팀 추천"></div>
+        </div>
+      </label>
+      <label class="add-field">
+        <span>Key</span>
+        <select id="addKey" class="select">
+          <option value="">선택</option>
+          <option value="C">C</option>
+          <option value="Db">Db</option>
+          <option value="D">D</option>
+          <option value="Eb">Eb</option>
+          <option value="E">E</option>
+          <option value="F">F</option>
+          <option value="F#">F#</option>
+          <option value="G">G</option>
+          <option value="Ab">Ab</option>
+          <option value="A">A</option>
+          <option value="Bb">Bb</option>
+          <option value="B">B</option>
+        </select>
+      </label>
+      <label class="add-field">
+        <span>파일</span>
+        <input id="addFileInput" class="input" type="file" accept="application/pdf,image/*" multiple required />
+        <small class="add-hint">PDF 또는 이미지. 이미지를 여러 장 고르면 순서대로 PDF 하나로 합쳐져요.</small>
+      </label>
+      <div id="addUploadProgressWrap" class="upload-progress hidden" aria-live="polite">
+        <div class="upload-progress-head">
+          <span id="addUploadProgressText">업로드 준비</span>
+          <span id="addUploadProgressPercent">0%</span>
+        </div>
+        <div class="upload-progress-track">
+          <div id="addUploadProgressBar" class="upload-progress-bar"></div>
+        </div>
+      </div>
+    </form>
+
+    <button id="btnSubmitAddFile" class="btn primary add-submit" type="submit" form="addFileForm">추가</button>
+  </main>
+</body>
+</html>
