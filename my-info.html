@@ -9,15 +9,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>나의 정보</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👤</text></svg>">
-  <script src="./theme.js"></script>
+  <script src="./theme.js?v=20261120-1"></script>
   <link rel="stylesheet" href="./styles.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="./supabase-config.js?v=20260324-2"></script>
   <script defer src="./supabase-client.js?v=20260324-2"></script>
   <script defer src="./account.js?v=20261120-1"></script>
-  <script defer src="./my-info.js?v=20261120-1"></script>
+  <script defer src="./my-info.js?v=20261120-2"></script>
   <script defer src="./nav.js?v=20261120-1"></script>
-  <link rel="stylesheet" href="./apple.css?v=20261120-2" />
+  <link rel="stylesheet" href="./apple.css?v=20261120-6" />
 </head>
 <body data-my-info="1">
   <header class="topbar">
@@ -32,54 +32,70 @@
     </nav>
   </header>
 
-  <main class="container">
-    <div class="myinfo-profile-summary">
+  <main class="container myinfo-container">
+    <section class="myinfo-profile-summary myinfo-profile">
       <div class="myinfo-avatar-wrap">
         <button id="myInfoAvatarButton" class="myinfo-avatar" type="button" aria-label="프로필 사진 변경">🐶</button>
+        <span class="myinfo-avatar-edit" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg>
+        </span>
         <input id="myInfoAvatarInput" class="hidden" type="file" accept="image/*" />
       </div>
-      <strong id="myInfoSummaryNickname" class="myinfo-summary-nickname">-</strong>
-      <div id="myInfoSummaryEmail" class="myinfo-summary-email">-</div>
-    </div>
-    <section class="myinfo-page-card">
-      <div class="package-form myinfo-form">
-        <label id="myInfoLinePassword" class="package-name-line" for="myInfoNewPassword">
-          <span>새 비밀번호</span>
-          <input id="myInfoNewPassword" class="input package-name-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="숫자 6자리" />
-        </label>
-        <label id="myInfoLinePasswordConfirm" class="package-name-line" for="myInfoNewPasswordConfirm">
-          <span>비밀번호 확인</span>
-          <input id="myInfoNewPasswordConfirm" class="input package-name-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="한 번 더" />
-        </label>
-        <div class="myinfo-actions">
-          <button id="btnThemeToggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="다크 모드 전환">
-            <span class="theme-toggle-track" aria-hidden="true">
-              <span class="theme-toggle-thumb"></span>
-            </span>
-            <span id="themeToggleLabel" class="theme-toggle-label">라이트</span>
-          </button>
-          <button id="btnMyInfoLogout" class="btn" type="button">로그아웃</button>
-          <button id="btnMyInfoChangePassword" class="btn" type="button">비밀번호 변경</button>
-        </div>
-        <div id="myInfoStatus" class="myinfo-status"></div>
+      <div class="myinfo-profile-text">
+        <strong id="myInfoSummaryNickname" class="myinfo-summary-nickname">-</strong>
+        <div id="myInfoSummaryEmail" class="myinfo-summary-email hidden"></div>
+        <span class="myinfo-profile-hint">사진을 눌러 프로필을 바꿀 수 있어요</span>
       </div>
     </section>
-    <a class="myinfo-admin-link hidden" href="./review.html" data-admin-only>
-      <span>악보 승인 대기</span>
-      <span class="app-nav-count hidden" data-pending-count></span>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
-    </a>
+
+    <section class="package-form myinfo-form myinfo-settings" aria-label="설정">
+      <details class="myinfo-row-expand">
+        <summary class="myinfo-row">
+          <span class="myinfo-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"></rect><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"></path></svg></span>
+          <span class="myinfo-row-label">비밀번호 변경</span>
+          <span class="myinfo-row-value">숫자 6자리</span>
+          <svg class="myinfo-row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+        </summary>
+        <div class="myinfo-row-body">
+          <label id="myInfoLinePassword" class="myinfo-field" for="myInfoNewPassword">
+            <span>새 비밀번호</span>
+            <input id="myInfoNewPassword" class="input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="숫자 6자리" />
+          </label>
+          <label id="myInfoLinePasswordConfirm" class="myinfo-field" for="myInfoNewPasswordConfirm">
+            <span>비밀번호 확인</span>
+            <input id="myInfoNewPasswordConfirm" class="input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="한 번 더" />
+          </label>
+          <button id="btnMyInfoChangePassword" class="btn primary myinfo-submit" type="button">비밀번호 변경</button>
+          <div id="myInfoStatus" class="myinfo-status" role="status" aria-live="polite"></div>
+        </div>
+      </details>
+
+      <a class="myinfo-row hidden" href="./review.html" data-admin-only>
+        <span class="myinfo-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+        <span class="myinfo-row-label">승인 관리</span>
+        <span class="app-nav-count hidden" data-pending-count></span>
+        <svg class="myinfo-row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+      </a>
+
+      <button id="btnMyInfoLogout" class="myinfo-row myinfo-row-danger" type="button">
+        <span class="myinfo-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7"></path><path d="M11 12h9m-3-3 3 3-3 3"></path></svg></span>
+        <span class="myinfo-row-label">로그아웃</span>
+      </button>
+    </section>
+
     <section id="myInfoPackagesSection" class="myinfo-packages-section">
-      <strong id="myInfoPackagesTitle" class="myinfo-packages-title">나의 악보</strong>
-      <div class="vault-search-wrap">
-        <input id="myPackagesSearch" class="input" type="text" placeholder="검색 (예: 악보명 / 찬양팀 / 키 / 초성)" />
-        <button id="btnClearMyPackagesSearch" class="vault-search-clear hidden" type="button" aria-label="검색어 전체 삭제">×</button>
+      <div class="myinfo-section-head">
+        <strong id="myInfoPackagesTitle" class="myinfo-packages-title">나의 악보</strong>
       </div>
-      <div id="myPackagesList" class="vault-list"></div>
+      <div class="vault-search-wrap search-wrap">
+        <input id="myPackagesSearch" class="input" type="text" placeholder="내가 올린 악보 검색" />
+        <button id="btnClearMyPackagesSearch" class="vault-search-clear search-clear hidden" type="button" aria-label="검색어 전체 삭제">×</button>
+      </div>
+      <div id="myPackagesList" class="vault-list myinfo-song-list"></div>
     </section>
   </main>
 
-  <section class="guest-page-card">
+  <section class="guest-page-card myinfo-guest">
     <div id="myInfoGuestActions" class="myinfo-guest-actions hidden">
       <p class="myinfo-guest-copy">즐겨찾기는 로그인 후 사용할 수 있어요.</p>
       <div class="myinfo-guest-buttons">
@@ -94,7 +110,7 @@
     <div class="modal-card myinfo-avatar-crop-card">
       <div class="modal-head">
         <strong id="myInfoAvatarCropTitle" class="m-title">프로필 사진</strong>
-        <button class="btn" type="button" data-avatar-crop-close="1">닫기</button>
+        <button class="btn myinfo-crop-close" type="button" data-avatar-crop-close="1" aria-label="닫기">닫기</button>
       </div>
       <div class="modal-body myinfo-avatar-crop-body">
         <div id="myInfoAvatarCropStage" class="myinfo-avatar-crop-stage">

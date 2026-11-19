@@ -924,6 +924,153 @@ td.col-key{ color: var(--label); font-weight: 600; font-variant-numeric: tabular
 .auth-bottom-actions .btn:not(.primary){ background: var(--surface); box-shadow: inset 0 0 0 .5px var(--separator); }
 .auth-input{ border-radius: var(--radius-s); }
 
+/* ---------- MY 페이지 ---------- */
+body[data-my-info] .myinfo-container{ max-width: 640px; padding-top: 24px; padding-bottom: 48px; }
+
+/* 프로필 카드: 왼쪽 사진, 오른쪽 닉네임 */
+body[data-my-info] .myinfo-profile{
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 16px;
+  padding: 20px;
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  justify-items: initial;
+}
+body[data-my-info] .myinfo-avatar-wrap{ position: relative; margin: 0; flex: 0 0 auto; }
+body[data-my-info] .myinfo-avatar{
+  width: 72px;
+  height: 72px;
+  font-size: 40px;
+  background: var(--fill);
+  color: var(--label);
+  box-shadow: none;
+  transition: transform 120ms var(--ease-out);
+}
+body[data-my-info] .myinfo-avatar:active{ transform: scale(.95); }
+.myinfo-avatar-edit{
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tint);
+  color: var(--on-tint);
+  box-shadow: 0 0 0 3px var(--surface);
+  pointer-events: none;
+}
+.myinfo-avatar-edit svg{ width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linejoin: round; }
+.myinfo-profile-text{ display: grid; gap: 4px; min-width: 0; }
+body[data-my-info] .myinfo-summary-nickname{ font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; text-align: left; }
+.myinfo-profile-hint{ font-size: 13px; color: var(--label-3); }
+
+/* 설정 목록 (iOS 설정 화면처럼 한 카드 안의 줄들) */
+body[data-my-info] .myinfo-settings{
+  display: block;
+  margin: 0 0 28px;
+  padding: 6px;
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.myinfo-row{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--label);
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  list-style: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 120ms ease;
+}
+.myinfo-row.hidden{ display: none; }
+.myinfo-row::-webkit-details-marker{ display: none; }
+.myinfo-row:active{ background: var(--fill); }
+@media (hover: hover) and (pointer: fine){ .myinfo-row:hover{ background: var(--fill); } }
+.myinfo-theme-row{ cursor: default; }
+.myinfo-theme-row:active, .myinfo-theme-row:hover{ background: transparent !important; }
+.myinfo-row-icon{
+  width: 32px; height: 32px; flex: 0 0 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  background: var(--fill);
+  color: var(--label);
+}
+.myinfo-row-icon svg{ width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.myinfo-row-label{ flex: 1 1 auto; font-weight: 500; }
+.myinfo-row-value{ color: var(--label-3); font-size: 14px; }
+.myinfo-row-chevron{ width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: var(--label-3); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform 200ms var(--ease-out); }
+.myinfo-row-expand[open] > .myinfo-row .myinfo-row-chevron{ transform: rotate(90deg); }
+.myinfo-row-danger{ color: var(--red); }
+.myinfo-row-danger .myinfo-row-icon{ color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); }
+.myinfo-row-expand + .myinfo-row,
+.myinfo-row + .myinfo-row{ margin-top: 2px; }
+
+.myinfo-row-body{ display: grid; gap: 12px; padding: 6px 14px 14px 58px; }
+.myinfo-field{ display: grid; gap: 6px; }
+.myinfo-field > span{ font-size: 13px; font-weight: 600; color: var(--label-2); }
+body[data-my-info] .myinfo-field .input{
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: var(--radius-s);
+  background: var(--fill);
+  font-size: 18px;
+  letter-spacing: .3em;
+  text-align: left;
+}
+body[data-my-info] .myinfo-field .input::placeholder{ letter-spacing: 0; font-size: 15px; }
+.myinfo-submit{ display: inline-flex; min-height: 48px; font-size: 15px; }
+body[data-my-info] .myinfo-status{ min-height: 0; margin: 0; font-size: 13px; color: var(--label-2); }
+body[data-my-info] .myinfo-status:empty{ display: none; }
+
+/* 다크 모드 스위치 (iOS 스타일) */
+.myinfo-switch{ margin: 0; gap: 0; }
+.myinfo-switch .theme-toggle-track{ width: 51px; height: 31px; background: var(--fill-2); transition: background-color 200ms ease; }
+.myinfo-switch .theme-toggle-thumb{ left: 2px; top: 2px; width: 27px; height: 27px; box-shadow: 0 2px 6px rgba(0,0,0,.18); transition: transform 260ms var(--ease-out); }
+.myinfo-switch.is-dark .theme-toggle-track{ background: var(--tint); }
+.myinfo-switch.is-dark .theme-toggle-thumb{ transform: translateX(20px); background: var(--on-tint); }
+/* 다크 모드는 모바일에서만 적용되는 기능이라 데스크탑에서는 숨김 */
+@media (min-width: 769px){ .myinfo-theme-row{ display: none; } }
+
+/* 나의 악보 */
+body[data-my-info] .myinfo-packages-section{ padding: 0; margin: 0; }
+.myinfo-section-head{ display: flex; align-items: baseline; justify-content: space-between; margin: 0 6px 10px; }
+body[data-my-info] .myinfo-packages-title{ margin: 0; padding: 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; text-align: left; color: var(--label); }
+body[data-my-info] .vault-search-wrap{ margin: 0 0 12px; padding: 0 16px; height: 44px; display: flex; align-items: center; }
+body[data-my-info] .vault-search-wrap::after{ display: none; }
+body[data-my-info] .vault-search-wrap .input{ padding: 0; height: 44px; font-size: 15px; background: transparent; }
+body[data-my-info] .vault-search-clear{ right: 12px; background: var(--fill-2); color: var(--label-2); }
+body[data-my-info] .myinfo-song-list{ gap: 0; padding: 6px; border-radius: var(--radius-l); background: var(--surface); box-shadow: var(--shadow-card); }
+body[data-my-info] .myinfo-song-list .vault-item{ padding: 12px 14px; border-radius: var(--radius-s); }
+body[data-my-info] .myinfo-song-list .vault-item + .vault-item{ margin-top: 2px; }
+body[data-my-info] .myinfo-song-list .vault-item-name{ display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; white-space: normal; }
+body[data-my-info] .myinfo-song-list .vault-package-name{ font-size: 15px; font-weight: 600; color: var(--label); }
+body[data-my-info] .myinfo-song-list .vault-item-nickname{ flex-basis: 100%; font-size: 12px; color: var(--label-2); }
+body[data-my-info] .myinfo-song-list .vault-item-date{ font-size: 12px; color: var(--label-3); margin-top: 2px; }
+body[data-my-info] .myinfo-song-list .vault-btn-open{ min-height: 32px; padding: 0 14px; font-size: 13px; background: var(--fill); color: var(--label); border: 0; }
+body[data-my-info] .myinfo-song-list .vault-empty{ padding: 28px 16px; text-align: center; color: var(--label-3); }
+
+/* 비로그인 */
+.myinfo-guest .myinfo-guest-actions{ max-width: 640px; margin: 0 auto; padding: 0 20px; text-align: center; }
+.myinfo-guest .myinfo-guest-buttons{ display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+.myinfo-guest .myinfo-guest-buttons .btn{ display: inline-flex; min-height: 48px; min-width: 120px; }
+
 /* ---------- 로그인 / 회원가입: 닉네임 + 숫자 6자리 키패드 ---------- */
 .pin-auth-page{ min-height: 100dvh; background: var(--bg); }
 .pin-auth{
@@ -1286,6 +1433,10 @@ td.col-key{ color: var(--label); font-weight: 600; font-variant-numeric: tabular
   html[data-ui-theme="dark"] .modal-head,
   html[data-ui-theme="dark"] .modal-body,
   html[data-ui-theme="dark"] .modal-foot{ background: var(--surface); color: var(--label); border-color: var(--separator); }
+  html[data-ui-theme="dark"] body[data-my-info] .myinfo-profile,
+  html[data-ui-theme="dark"] body[data-my-info] .myinfo-settings,
+  html[data-ui-theme="dark"] body[data-my-info] .myinfo-song-list{ background: var(--surface); }
+  html[data-ui-theme="dark"] .theme-toggle{ color: var(--label); }
   /* 다크: 주 버튼이 흰색이 되므로 아이콘 색을 반전 */
   html[data-ui-theme="dark"] .index-page .controls #btnSelectMode::before,
   html[data-ui-theme="dark"] .index-page .controls #btnSelectMode.is-active::before{
