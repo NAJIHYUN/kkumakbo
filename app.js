@@ -619,6 +619,10 @@ function toSimpleInitial(ch = "") {
   return map[ch] || ch;
 }
 
+function isLatestSort() {
+  return String($("#sort")?.value || "") === "latest";
+}
+
 function renderScrollIndex() {
   const rail = $("#scrollIndex");
   const scroller = $("#tableScroll");
@@ -646,6 +650,8 @@ function renderScrollIndex() {
 
   rail.innerHTML = "";
   if (thumb) rail.appendChild(thumb);
+  // 최신순은 날짜 순서라 ㄱ~ㅎ / A~Z 색인이 의미 없음 → 스크롤 막대만 남김
+  if (isLatestSort()) return;
   SCROLL_INDEX_TOKENS.forEach((token) => {
     const count = counts.get(token) || 0;
     if (count <= 0 || !firstOffsets.has(token)) return;
@@ -725,6 +731,10 @@ function updateScrollIndexHint(clientY) {
   const wrapRect = wrap.getBoundingClientRect();
   const clampedY = Math.max(railRect.top, Math.min(railRect.bottom, clientY));
   const yInWrap = clampedY - wrapRect.top;
+  if (isLatestSort()) {
+    hint.classList.add("hidden");
+    return;
+  }
   const token = getNearestScrollToken(clampedY);
   hint.textContent = token;
   hint.style.top = `${yInWrap}px`;
@@ -742,7 +752,7 @@ function startScrollIndexDrag(e) {
   scrollIndexDragState = { pointerId: e.pointerId };
   rail.classList.add("dragging");
   const hint = ensureScrollIndexHint();
-  hint?.classList.remove("hidden");
+  if (!isLatestSort()) hint?.classList.remove("hidden");
   try {
     rail.setPointerCapture(e.pointerId);
   } catch {}
