@@ -79,7 +79,26 @@
         e.stopPropagation();
         if (e.target.closest(".app-nav-item")) setOpen(false); // 항목을 누르면 메뉴 닫기
       });
-      document.addEventListener("click", () => setOpen(false));
+      // 바깥 화면을 누르면 닫기.
+      // - click 대신 pointerdown을 capture 단계에서 잡음: iOS Safari는 누를 수 없는 곳(빈 칸 등)을
+      //   탭하면 click이 document까지 오지 않고, 일부 버튼은 click 전파를 막기 때문.
+      // - 메뉴를 닫는 탭은 닫기만 하고 그 아래 버튼/링크는 실행하지 않음 (iOS 메뉴와 같은 동작).
+      let swallowClick = false;
+      let swallowTimer = 0;
+      document.addEventListener("pointerdown", (e) => {
+        if (!nav.classList.contains("is-open")) return;
+        if (nav.contains(e.target) || btn.contains(e.target)) return;
+        setOpen(false);
+        swallowClick = true;
+        clearTimeout(swallowTimer);
+        swallowTimer = setTimeout(() => { swallowClick = false; }, 500);
+      }, true);
+      document.addEventListener("click", (e) => {
+        if (!swallowClick) return;
+        swallowClick = false;
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && nav.classList.contains("is-open")) {
           setOpen(false);
