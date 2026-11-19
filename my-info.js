@@ -247,7 +247,10 @@ function matchesSongsQuery(item, query) {
   if (/[ㄱ-ㅎ]/.test(q)) {
     return `${getChosung(title)}${getChosung(artist)}`.includes(q.replace(/\s+/g, ""));
   }
-  return title.includes(q) || artist.includes(q) || key.includes(q) || merged.includes(q);
+  // 띄어쓰기는 무시하고 비교
+  const compact = (t) => t.replace(/\s+/g, "");
+  const cq = compact(q);
+  return compact(title).includes(cq) || compact(artist).includes(cq) || key.includes(q) || compact(merged).includes(cq);
 }
 
 function buildAuthPageUrl() {

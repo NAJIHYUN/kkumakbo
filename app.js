@@ -145,10 +145,13 @@ function matchesQuery(song, q) {
     return cAll.includes(nq.replace(/\s+/g, ""));
   }
 
-  // 일반 검색: 제목/아티스트/키
+  // 일반 검색: 제목/아티스트/키 — 띄어쓰기는 무시 ("나같은죄인" → "나 같은 죄인 살리신")
+  const compactQ = nq.replace(/\s+/g, "");
+  if (!compactQ) return true;
+  const compact = (t) => t.replace(/\s+/g, "");
   return (
-    title.includes(nq) ||
-    artist.includes(nq) ||
+    compact(title).includes(compactQ) ||
+    compact(artist).includes(compactQ) ||
     key === nq
   );
 }
