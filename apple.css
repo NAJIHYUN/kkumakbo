@@ -305,6 +305,15 @@ body .topbar .brand #myPackagesTitle{
   font-size: 15px;
 }
 .search-wrap .input::placeholder{ color: var(--label-3); }
+/* 포커스 표시는 검색창 바깥 둥근 테두리 하나만 — 안쪽 입력 칸의 네모 테두리/배경은 없앰 */
+.search-wrap .input:focus,
+.search-wrap .input:focus-visible,
+.vault-search-wrap .input:focus,
+.vault-search-wrap .input:focus-visible{
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
 .index-search-icon svg{ stroke: var(--label-3); }
 .search-clear{ color: var(--label-3); }
 
