@@ -1306,23 +1306,31 @@ function sanitizeFilename(text) {
 
 const SONG_SELECT_FULL = "id, owner_id, title, artist, key, pdf_url, jpg_url, created_at, uploader_nickname, slug, status";
 
+// Supabase(PostgREST)는 한 번에 최대 1000행만 돌려주므로 1000개씩 나눠서 모두 가져옴
+const SONG_PAGE_SIZE = 1000;
+async function selectAllPages(client, columns) {
+  const rows = [];
+  for (let from = 0; ; from += SONG_PAGE_SIZE) {
+    const res = await client
+      .from(SB_SONGS_TABLE)
+      .select(columns)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, from + SONG_PAGE_SIZE - 1);
+    if (res.error) return res;
+    rows.push(...(res.data || []));
+    if (!res.data || res.data.length < SONG_PAGE_SIZE) return { data: rows, error: null };
+  }
+}
+
 async function selectSongsRows(client) {
-  const full = await client
-    .from(SB_SONGS_TABLE)
-    .select(SONG_SELECT_FULL)
-    .order("created_at", { ascending: false });
+  const full = await selectAllPages(client, SONG_SELECT_FULL);
   if (!full.error) return full;
   console.warn("songs select with slug/status failed (migration 미적용?); falling back:", full.error);
-  const withNickname = await client
-    .from(SB_SONGS_TABLE)
-    .select("id, owner_id, title, artist, key, pdf_url, jpg_url, created_at, uploader_nickname")
-    .order("created_at", { ascending: false });
+  const withNickname = await selectAllPages(client, "id, owner_id, title, artist, key, pdf_url, jpg_url, created_at, uploader_nickname");
   if (!withNickname.error) return withNickname;
   console.warn("songs select with uploader_nickname failed; falling back:", withNickname.error);
-  return client
-    .from(SB_SONGS_TABLE)
-    .select("id, owner_id, title, artist, key, pdf_url, jpg_url, created_at")
-    .order("created_at", { ascending: false });
+  return selectAllPages(client, "id, owner_id, title, artist, key, pdf_url, jpg_url, created_at");
 }
 
 function buildPreviewMeta(song = {}) {

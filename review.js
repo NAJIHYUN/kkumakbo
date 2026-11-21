@@ -198,7 +198,15 @@
   }
 
   async function loadArtistSuggestions() {
-    const { data } = await client.from("songs").select("artist").eq("status", "approved");
+    // 1000행 제한이 있어 나눠서 가져옴
+    const data = [];
+    for (let from = 0; ; from += 1000) {
+      const res = await client.from("songs").select("artist").eq("status", "approved")
+        .order("id", { ascending: true }).range(from, from + 999);
+      if (res.error || !res.data) break;
+      data.push(...res.data);
+      if (res.data.length < 1000) break;
+    }
     const names = Array.from(new Set((data || []).map((r) => String(r.artist || "").trim()).filter(Boolean)))
       .sort((a, b) => a.localeCompare(b, "ko"));
     let list = document.querySelector("#reviewArtistList");
