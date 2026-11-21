@@ -28,6 +28,8 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PENDING_FILE = join(homedir(), "코딩", "DB", "보류목록.json");
 const KEYS = ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+// 아티스트 이름 통일 (블로그 표기 → 악보함 표기)
+const ARTIST_ALIASES = { gifted: "기프티드" };
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
@@ -82,7 +84,8 @@ function parseTitle(raw = "") {
     || rest.match(/(?:key|키)\s*[:=]?\s*([A-Ga-g][#b♭♯]?m?)\s*$/i);
   if (!keyMatch) return { title, artist: clean(rest.replace(/\([^)]*\)/g, "")), problem: "제목에서 키를 찾지 못함" };
   rest = rest.slice(0, keyMatch.index + (keyMatch[0].length - keyMatch[0].trimStart().length)).replace(/\)\s*$/, ")").trim();
-  const artist = clean(rest.replace(/\([^)]*\)/g, ""));
+  const artistRaw = clean(rest.replace(/\([^)]*\)/g, ""));
+  const artist = ARTIST_ALIASES[artistRaw.toLowerCase()] || artistRaw;
   const rawKey = keyMatch[1].replace(/♭/g, "b").replace(/♯/g, "#").replace(/\s+/g, "");
   const toKey = (x) => KEYS.find((k) => k.toLowerCase() === x.toLowerCase()) || x;
   const keys = rawKey.split(/[,/]/).filter(Boolean).map(toKey);

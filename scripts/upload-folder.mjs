@@ -53,7 +53,8 @@ function getServiceKey() {
 }
 
 const normalize = (t = "") => String(t).normalize("NFC").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
-const dupKey = (s) => `${normalize(s.title).toLowerCase()}|${normalize(s.artist).toLowerCase()}|${normalize(s.key).toLowerCase()}`;
+// 중복 판단은 띄어쓰기·대소문자 무시 ("구주삼고" = "구주 삼고")
+const dupKey = (s) => [s.title, s.artist, s.key].map((x) => normalize(x).toLowerCase().replace(/\s+/g, "")).join("|");
 
 function normalizeKey(raw = "") {
   const k = normalize(raw);

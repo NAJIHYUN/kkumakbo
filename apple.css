@@ -1325,6 +1325,11 @@ body[data-my-info] .myinfo-song-list .vault-empty{ padding: 28px 16px; text-alig
   background: #fff;
   box-shadow: none;
 }
+/* 여러 장 · 한 장 모두 같은 모양: 각진 모서리 + 1px 회색 테두리 */
+.song-page #mPageStrip .page-thumb,
+.song-page #mPageStrip .page-thumb.page-slide{ border-radius: 0; }
+.song-page #modal.mobile-slide-mode .page-thumb.page-slide .page-thumb-image,
+.song-page .preview-img{ border: 1px solid #ccc; border-radius: 0; box-sizing: border-box; }
 /* 페이지가 1장뿐이면 1/1 배지 숨김 */
 .song-page #mPageStrip .page-thumb.page-slide:only-child .page-slide-badge{ display: none; }
 .song-page #modal.mobile-slide-mode .page-slide-badge{
